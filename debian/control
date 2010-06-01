@@ -1,0 +1,73 @@
+Source: kdesvn
+Section: vcs
+Priority: optional
+Maintainer: Debian KDE Extras Team <pkg-kde-extras@lists.alioth.debian.org>
+Uploaders: Michael Biebl <biebl@debian.org>
+Build-Depends: debhelper (>= 7.3.16), cmake (>= 2.4), kdelibs5-dev, libsvn-dev (>= 1.2.0), libssl-dev (>= 0.9.8a), libsqlite3-dev, gettext, pkg-kde-tools (>= 0.9)
+Standards-Version: 3.8.4
+Vcs-Svn: svn://svn.debian.org/pkg-kde/kde-extras/kdesvn/trunk/
+Vcs-Browser: http://svn.debian.org/wsvn/pkg-kde/kde-extras/kdesvn/trunk/
+Homepage: http://kdesvn.alwins-world.de/
+
+Package: libsvnqt6
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Qt wrapper library for Subversion
+ This package provides svnqt, a Qt wrapper library around the
+ Subversion library.
+ .
+ It is based on the RapidSvn SvnCpp library, a Subversion client API
+ written in C++.
+
+Package: libsvnqt-dev
+Section: libdevel
+Architecture: any
+Depends: libsvnqt6 (= ${binary:Version}), ${misc:Depends}, libqt4-dev, libsvn-dev
+Conflicts: libsvnqt4-dev
+Replaces: libsvnqt4-dev
+Description: Qt wrapper library for Subversion (development files)
+ This package contains the header files and symbolic links that developers
+ using svnqt will need.
+
+Package: kdesvn
+Section: vcs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, kdesvn-kio-plugins (= ${binary:Version})
+Recommends: kompare, graphviz
+Suggests: khelpcenter, kdiff3
+Description: Subversion client with tight KDE integration
+ KDESvn is a graphical client for the Subversion revision control
+ system (svn).
+ .
+ Besides offering common and advanced svn operations, it features
+ a tight integration into KDE and can be embedded into other KDE
+ applications like konqueror via the KDE component technology KParts.
+
+Package: kdesvn-kio-plugins
+Section: vcs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Conflicts: kdesdk-misc (<< 4:3.5.0-1), kdesdk-kio-plugins (>= 4:4.0.0)
+Replaces: kdesdk-kio-plugins (>= 4:4.0.0)
+Description: Subversion I/O slaves for KDE
+ This package includes KIO slaves for svn, svn+file, svn+http,
+ svn+https, svn+ssh. This allows you to access Subversion repositories
+ inside any KIO enabled KDE application.
+ .
+ This package is part of kdesvn.
+
+Package: kdesvn-dbg
+Section: debug
+Architecture: any
+Priority: extra
+Depends: kdesvn (= ${binary:Version}) , libsvnqt6 (= ${binary:Version}), ${misc:Depends}
+Description: debug symbols for kdesvn
+ KDESvn is a graphical client for the Subversion revision control
+ system (svn).
+ .
+ Besides offering common and advanced svn operations, it features
+ a tight integration into KDE and can be embedded into other KDE
+ applications like konqueror via the KDE component technology KParts.
+ .
+ This package contains the debugging symbols.

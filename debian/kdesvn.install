@@ -1,0 +1,13 @@
+debian/icons/kdesvn.xpm	/usr/share/pixmaps/
+debian/tmp/usr/bin/
+debian/tmp/usr/lib/kde4/kdesvnpart.so
+debian/tmp/usr/share/kde4/apps/kdesvn/
+debian/tmp/usr/share/kde4/apps/kdesvnpart/
+debian/tmp/usr/share/kde4/apps/kconf_update/
+debian/tmp/usr/share/kde4/config.kcfg/
+debian/tmp/usr/share/kde4/services/ServiceMenus/
+debian/tmp/usr/share/kde4/services/kdesvnpart.desktop
+debian/tmp/usr/share/icons/
+debian/tmp/usr/share/locale/*/LC_MESSAGES/*.mo
+debian/tmp/usr/share/applications/kde4/*.desktop
+debian/tmp/usr/share/doc/kde/HTML/

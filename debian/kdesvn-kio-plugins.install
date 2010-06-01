@@ -1,0 +1,5 @@
+debian/tmp/usr/share/kde4/services/*.protocol
+debian/tmp/usr/share/kde4/services/kded/
+debian/tmp/usr/lib/kde4/kio_ksvn.so
+debian/tmp/usr/lib/kde4/kded_kdesvnd.so
+debian/tmp/usr/share/dbus-1/interfaces/org.kde.kdesvnd.xml
