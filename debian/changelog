@@ -1,3 +1,9 @@
+kdesvn (1.5.3-2ubuntu0~ppa1) lucid; urgency=low
+
+  * Build latest version from Debian.
+
+ -- Dominik Stadler (Ubuntu key) <dominik.stadler@gmx.at>  Tue, 13 Jul 2010 21:06:56 +0200
+
 kdesvn (1.5.3-2) unstable; urgency=low
 
   * Install KDE 4 HTML documentation to /usr/share/doc/kde/HTML.
@@ -11,6 +17,30 @@ kdesvn (1.5.3-1) unstable; urgency=low
   * New upstream release.
 
  -- Michael Biebl <biebl@debian.org>  Sun, 11 Apr 2010 00:36:26 +0200
+
+kdesvn (1.5.3-0ubuntu2~ppa2) lucid; urgency=low
+
+  * Rebuild for Lucid.
+
+ -- Dominik Stadler (Ubuntu key) <dominik.stadler@gmx.at>  Wed, 02 Jun 2010 10:45:29 +0200
+
+kdesvn (1.5.3-0ubuntu2~ppa1) karmic; urgency=low
+
+  * Backport to karmic.
+
+ -- Dominik Stadler (Ubuntu key) <dominik.stadler@gmx.at>  Sat, 17 Apr 2010 11:13:51 +0200
+
+kdesvn (1.5.3-0ubuntu1) lucid; urgency=low
+
+  * New upstream bugfix release
+
+ -- Jonathan Thomas <echidnaman@kubuntu.org>  Sat, 10 Apr 2010 07:59:36 -0400
+
+kdesvn (1.5.2-0ubuntu1) lucid; urgency=low
+
+  * New upstream release.
+
+ -- Andreas Wenning <awen@awen.dk>  Fri, 12 Feb 2010 23:57:51 +0100
 
 kdesvn (1.5.2-1) unstable; urgency=low
 
@@ -31,6 +61,14 @@ kdesvn (1.5.2-1) unstable; urgency=low
 
  -- Michael Biebl <biebl@debian.org>  Sat, 13 Feb 2010 18:24:09 +0100
 
+kdesvn (1.5.1-1ubuntu1) lucid; urgency=low
+
+  * Merge from Debian Unstable, remaining changes:
+    - debian/rules: export KUBUNTU_NO_DELETE_POT=1 so that things don't fail
+    - kdesvn.install: use Kubuntu docpath (/usr/share/doc/kde/)
+
+ -- Jonathan Thomas <echidnaman@kubuntu.org>  Sun, 17 Jan 2010 09:36:08 -0500
+
 kdesvn (1.5.1-1) unstable; urgency=low
 
   * New upstream release.
@@ -38,6 +76,14 @@ kdesvn (1.5.1-1) unstable; urgency=low
   * Review debian/copyright. Closes: #539931
 
  -- Michael Biebl <biebl@debian.org>  Sun, 17 Jan 2010 01:22:18 +0100
+
+kdesvn (1.5.0-1ubuntu1) lucid; urgency=low
+
+  * Merge from Debian Unstable, remaining changes:
+    - debian/rules: export KUBUNTU_NO_DELETE_POT=1 so that things don't fail
+    - kdesvn.install: use Kubuntu docpath (/usr/share/doc/kde/)
+
+ -- Jonathan Thomas <echidnaman@kubuntu.org>  Tue, 12 Jan 2010 09:50:33 -0500
 
 kdesvn (1.5.0-1) unstable; urgency=low
 
@@ -51,6 +97,20 @@ kdesvn (1.5.0-1) unstable; urgency=low
 
  -- Michael Biebl <biebl@debian.org>  Mon, 11 Jan 2010 23:06:37 +0100
 
+kdesvn (1.4.1-1ubuntu1) lucid; urgency=low
+
+  * Merge from Debian Testing, remaining changes:
+    - debian/rules: export KUBUNTU_NO_DELETE_POT=1 so that things don't fail
+    - kdesvn.install: use Kubuntu docpath (/usr/share/doc/kde/)
+
+ -- Jonathan Thomas <echidnaman@kubuntu.org>  Tue, 03 Nov 2009 11:37:53 -0500
+
+kdesvn (1.4.1-0ubuntu1) karmic; urgency=low
+
+  * New upstream release. (LP: #440894, #432407)
+
+ -- Andreas Wenning <awen@awen.dk>  Fri, 02 Oct 2009 22:40:02 +0200
+
 kdesvn (1.4.1-1) unstable; urgency=low
 
   * New upstream release.
@@ -59,12 +119,44 @@ kdesvn (1.4.1-1) unstable; urgency=low
 
  -- Michael Biebl <biebl@debian.org>  Thu, 01 Oct 2009 23:39:59 +0200
 
+kdesvn (1.4.0-1ubuntu2) karmic; urgency=low
+
+  * Add replaces/conflicts on libqtsvn5 for libqtsvn6
+
+ -- Jonathan Thomas <echidnaman@kubuntu.org>  Tue, 18 Aug 2009 20:54:49 -0400
+
+kdesvn (1.4.0-1ubuntu1) karmic; urgency=low
+
+  * Merge from Debian Unstable, remaining changes:
+    - debian/rules: export KUBUNTU_NO_DELETE_POT=1 so that things don't fail
+    - kdesvn.install: use Kubuntu docpath (/usr/share/doc/kde/)
+
+ -- Jonathan Thomas <echidnaman@kubuntu.org>  Tue, 18 Aug 2009 19:37:57 -0400
+
 kdesvn (1.4.0-1) unstable; urgency=low
 
   * New upstream release.
-  * Soname bump of svnqt: libsvnqt5 → libsvnqt6.
+  * Soname bump of svnqt: libsvnqt5 ? libsvnqt6.
 
  -- Michael Biebl <biebl@debian.org>  Sun, 02 Aug 2009 21:51:11 +0200
+
+kdesvn (1.4.0-0ubuntu1) karmic; urgency=low
+
+  * New upstream release
+
+ -- Jonathan Thomas <echidnaman@kubuntu.org>  Sat, 01 Aug 2009 15:25:42 -0400
+
+kdesvn (1.3.2-1ubuntu1) karmic; urgency=low
+
+  * Merge from debian unstable, remaining changes:
+    - debian/control: kdesvn Conflicts/Replaces on kdesvn-kde4 and
+      kdesvn-kio-plugins Conflics/Replaces kdesvn-kio-plugins-kde4
+    - debian/rules: export KUBUNTU_NO_DELETE_POT=1 so that things don't fail
+    - kdesvn.install: use Kubuntu docpath (/usr/share/doc/kde/)
+    Bug fixes:
+    - Load last opened URL on start doesn't work (LP: #353864)
+
+ -- Simon Olofsson <simon@olofsson.de>  Thu, 16 Jul 2009 22:07:49 +0200
 
 kdesvn (1.3.2-1) unstable; urgency=low
 
@@ -78,6 +170,16 @@ kdesvn (1.3.2-1) unstable; urgency=low
 
  -- Michael Biebl <biebl@debian.org>  Tue, 14 Jul 2009 15:51:04 +0200
 
+kdesvn (1.3.1-1ubuntu1) karmic; urgency=low
+
+  * Merge from Debian unstable, remaining changes:
+    - debian/control: kdesvn Conflicts/Replaces on kdesvn-kde4 and
+      kdesvn-kio-plugins Conflics/Replaces kdesvn-kio-plugins-kde4
+    - debian/rules: export KUBUNTU_NO_DELETE_POT=1 so that things don't fail
+    - kdesvn.install: use Kubuntu docpath (/usr/share/doc/kde/)
+
+ -- Jonathan Thomas <echidnaman@kubuntu.org>  Fri, 22 May 2009 17:33:48 -0400
+
 kdesvn (1.3.1-1) unstable; urgency=low
 
   * New upstream release.
@@ -88,6 +190,55 @@ kdesvn (1.3.1-1) unstable; urgency=low
     - Change section of kdesvn and kdesvn-kio-plugins to "vcs".
 
  -- Michael Biebl <biebl@debian.org>  Wed, 20 May 2009 17:16:34 +0200
+
+kdesvn (1.3.1-0ubuntu1) karmic; urgency=low
+
+  * New upstream release (LP: #378192)
+  * Remove debian/patches, it is empty
+  * Drop cmake and quilt from build-deps
+  * Drop patchsys-quilt.mk from rules
+
+ -- Alessandro Ghersi <alessandro.ghersi@fastwebnet.it>  Tue, 19 May 2009 06:16:53 +0200
+
+kdesvn (1.3.0-1ubuntu1) karmic; urgency=low
+
+  * Merge from Debian unstable, remaining changes:
+    - debian/rules: kdesvn Conflicts/Replaces on kdesvn-kde4 and
+      kdesvn-kio-plugins Conflics/Replaces kdesvn-kio-plugins-kde4
+    - Use our cmake.mk rather than debian's kde.mk
+    - Change docpath to /usr/share/docs/kde rather than to /kde4
+
+ -- Jonathan Thomas <echidnaman@kubuntu.org>  Tue, 28 Apr 2009 12:28:26 -0400
+
+kdesvn (1.3.0-1) unstable; urgency=low
+
+  * New upstream release.
+  * debian/control
+    - Bump Standards-Version to 3.8.1. No further changes.
+    - Change Section of kdesvn-dbg to debug.
+
+ -- Michael Biebl <biebl@debian.org>  Sat, 18 Apr 2009 21:41:53 +0200
+
+kdesvn (1.2.4-1) unstable; urgency=low
+
+  * New upstream release.
+    - Reduced debug output on stderr. Closes: #431616
+
+ -- Michael Biebl <biebl@debian.org>  Thu, 19 Feb 2009 16:20:26 +0100
+
+kdesvn (1.2.4-0ubuntu1) jaunty; urgency=low
+
+  * New upstream release
+  * Mostly a bugfix release:
+    - fix a small problem with (un-)ignore action
+    - reduced debug output, changed default debugoutput area
+    - fixed some smaller layout problems
+    - fixed porting error (ssl-trust-dialog didn't ask the right questions)
+    - fixed an icon scale error
+  * Fixed kdesvn.install, as the docs are now build in
+    /usr/share/doc/kde
+
+ -- Anthony Mercatante <tonio@ubuntu.com>  Tue, 24 Feb 2009 17:28:06 +0100
 
 kdesvn (1.3.0-1) unstable; urgency=low
 
@@ -130,6 +281,23 @@ kdesvn (1.2.3-1) experimental; urgency=low
     number from the library name again.
 
  -- Michael Biebl <biebl@debian.org>  Tue, 20 Jan 2009 14:34:30 +0100
+
+kdesvn (1.2.3-0ubuntu1) jaunty; urgency=low
+
+  * Merge from Debian experimental. Remaining Ubuntu changes:
+    - debian/rules: kdesvn Conflicts/Replaces on kdesvn-kde4 and
+      kdesvn-kio-plugins Conflics/Replaces kdesvn-kio-plugins-kde4
+    - Remove debian/man/ as man-pages are included.
+    - debian/kdesvn.manpages changed to install upstream man-pages.
+  * New upstream release
+  * Rename package libsvnqt4-5 to libsvnqt5 as the library name has been
+    changed back to libsvnqt.
+    - debian/libsvnqt4-5.install renamed to libsvnqt5.install and updated
+      to reflect new library name.
+    - debian/rules: Change the DEB_DH_MAKESHLIBS_ARGS line as well.
+    - debian/control: Change Depends for libsvnqt-dev and kdesvn-dbg.
+
+ -- Andreas Wenning <awen@awen.dk>  Tue, 20 Jan 2009 13:07:18 +0100
 
 kdesvn (1.2.2-2) experimental; urgency=low
 
@@ -183,6 +351,29 @@ kdesvn (1.2.1-1) experimental; urgency=low
     Thanks to Raúl Sánchez Siles for the patch. Closes: #447521
 
  -- Michael Biebl <biebl@debian.org>  Fri, 24 Oct 2008 18:19:51 +0200
+
+kdesvn (1.2.1-0ubuntu2) intrepid; urgency=low
+
+  * debian/control:
+    - kdesvn-kio-plugins: Update replaces/conflicts on kdesdk-kio-plugins
+      to cover kde4 versions as well, eg. kdesdk-kio-plugins (<< 4:5.0.0),
+      kdesdk-kio-plugins-kde4. (LP: #284026)
+    - kdesvn: Add replaces/conflicts on kdesvn-kde4.
+
+ -- Andreas Wenning <awen@awen.dk>  Thu, 16 Oct 2008 04:15:05 +0200
+
+kdesvn (1.2.1-0ubuntu1) intrepid; urgency=low
+
+  * New upstream release for KDE4.
+  * Modify Maintainer value to match the DebianMaintainerField
+    specification.
+  * Edit debian/control to match kde4 libraries.
+  * Modify 01-shortcuts.patch to work with the new code; it is partly
+    incorporated by upstream.
+  * Modify debian/*.install to match the new filenames/locations.
+  * Remove debian/man/ as man-pages are now included.
+
+ -- Andreas Wenning <awen@awen.dk>  Tue, 14 Oct 2008 20:08:37 +0200
 
 kdesvn (1.0.4-2) unstable; urgency=low
 

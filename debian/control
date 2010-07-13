@@ -1,7 +1,8 @@
 Source: kdesvn
 Section: vcs
 Priority: optional
-Maintainer: Debian KDE Extras Team <pkg-kde-extras@lists.alioth.debian.org>
+Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+XSBC-Original-Maintainer: Debian KDE Extras Team <pkg-kde-extras@lists.alioth.debian.org>
 Uploaders: Michael Biebl <biebl@debian.org>
 Build-Depends: debhelper (>= 7.3.16), cmake (>= 2.4), kdelibs5-dev, libsvn-dev (>= 1.2.0), libssl-dev (>= 0.9.8a), libsqlite3-dev, gettext, pkg-kde-tools (>= 0.9)
 Standards-Version: 3.8.4
