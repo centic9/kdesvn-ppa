@@ -1,3 +1,9 @@
+kdesvn (1.5.3-2ubuntu0~ppa2) lucid; urgency=low
+
+  * Try with lower pkd-kde-tools version.
+
+ -- Dominik Stadler (Ubuntu key) <dominik.stadler@gmx.at>  Thu, 15 Jul 2010 21:44:35 +0200
+
 kdesvn (1.5.3-2ubuntu0~ppa1) lucid; urgency=low
 
   * Build latest version from Debian.
