@@ -4,8 +4,8 @@ Priority: optional
 Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
 XSBC-Original-Maintainer: Debian KDE Extras Team <pkg-kde-extras@lists.alioth.debian.org>
 Uploaders: Michael Biebl <biebl@debian.org>
-Build-Depends: debhelper (>= 7.3.16), cmake (>= 2.4), kdelibs5-dev, libsvn-dev (>= 1.2.0), libssl-dev (>= 0.9.8a), libsqlite3-dev, gettext, pkg-kde-tools
-Standards-Version: 3.8.4
+Build-Depends: debhelper (>= 8), cmake (>= 2.4), kdelibs5-dev, libsvn-dev (>= 1.2.0), libssl-dev (>= 0.9.8a), libsqlite3-dev, gettext, pkg-kde-tools (>= 0.9)
+Standards-Version: 3.9.2
 Vcs-Svn: svn://svn.debian.org/pkg-kde/kde-extras/kdesvn/trunk/
 Vcs-Browser: http://svn.debian.org/wsvn/pkg-kde/kde-extras/kdesvn/trunk/
 Homepage: http://kdesvn.alwins-world.de/
@@ -25,8 +25,6 @@ Package: libsvnqt-dev
 Section: libdevel
 Architecture: any
 Depends: libsvnqt6 (= ${binary:Version}), ${misc:Depends}, libqt4-dev, libsvn-dev
-Conflicts: libsvnqt4-dev
-Replaces: libsvnqt4-dev
 Description: Qt wrapper library for Subversion (development files)
  This package contains the header files and symbolic links that developers
  using svnqt will need.
@@ -49,7 +47,7 @@ Package: kdesvn-kio-plugins
 Section: vcs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Conflicts: kdesdk-misc (<< 4:3.5.0-1), kdesdk-kio-plugins (>= 4:4.0.0)
+Conflicts: kdesdk-kio-plugins (>= 4:4.0.0)
 Replaces: kdesdk-kio-plugins (>= 4:4.0.0)
 Description: Subversion I/O slaves for KDE
  This package includes KIO slaves for svn, svn+file, svn+http,

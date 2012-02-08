@@ -1,1 +1,3 @@
 # Patches for kdesvn
+doctype_version.patch
+virtual_inheritance.patch

@@ -1,7 +1,7 @@
 # norootforbuild
 Summary:   A subversion client for the KDE with KIO integration.
 Name:      kdesvn
-Version:   1.5.3
+Version:   1.5.5
 Release:   1%{?dist}
 License:   LGPL
 Vendor:    Rajko Albrecht <ral@alwins-world.de>
