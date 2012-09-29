@@ -38,9 +38,12 @@
 #include "fronthelpers/rangeinput_impl.h"
 #include "fronthelpers/widgetblockstack.h"
 #include "fronthelpers/fronthelpers.h"
+#include "fronthelpers/DialogStack.h"
 #include "src/ksvnwidgets/commitmsg_impl.h"
 #include "src/ksvnwidgets/deleteform_impl.h"
 #include "opencontextmenu.h"
+#include "EditIgnorePattern.h"
+#include "setpropertywidget.h"
 
 #include <kmessagebox.h>
 #include <kicon.h>
@@ -55,6 +58,7 @@
 #include <kio/copyjob.h>
 #include <kfiledialog.h>
 #include <knotification.h>
+#include <unistd.h>
 
 #include <QSortFilterProxyModel>
 #include <QEvent>
@@ -592,6 +596,8 @@ void MainTreeWidget::setupActions()
     tmp_action = add_action("make_try_resolve",i18n("Resolve conflicts"),KShortcut(),KIcon("kdesvnresolved"),this,SLOT(slotTryResolve()));
 
     tmp_action = add_action("make_svn_ignore",i18n("Ignore/Unignore current item"),KShortcut(),KIcon(),this,SLOT(slotIgnore()));
+    tmp_action = add_action("make_left_add_ignore_pattern",i18n("Add or Remove ignore pattern"),KShortcut(),KIcon(),this,SLOT(slotLeftRecAddIgnore()));
+    tmp_action = add_action("make_right_add_ignore_pattern",i18n("Add or Remove ignore pattern"),KShortcut(),KIcon(),this,SLOT(slotRightRecAddIgnore()));
 
     tmp_action = add_action("make_svn_headupdate",i18n("Update to head"),KShortcut(),KIcon("kdesvnupdate"),m_Data->m_Model->svnWrapper(),SLOT(slotUpdateHeadRec()));
     tmp_action->setIconText(i18n("Update"));
@@ -657,8 +663,10 @@ void MainTreeWidget::setupActions()
 
     tmp_action = add_action("make_dir_commit",i18n("Commit"),KShortcut(),KIcon("kdesvncommit"),this,SLOT(slotDirCommit()));
     tmp_action = add_action("make_dir_update",i18n("Update to head"),KShortcut(),KIcon("kdesvnupdate"),this,SLOT(slotDirUpdate()));
+    tmp_action = add_action("set_rec_property_dir",i18n("Set property recursive"),KShortcut(),KIcon(),this,SLOT(slotDirRecProperty()));
 
     tmp_action = add_action("show_repository_settings",i18n("Settings for current repository"),KShortcut(),KIcon(),this,SLOT(slotRepositorySettings()));
+
     enableActions();
 }
 
@@ -715,6 +723,7 @@ void MainTreeWidget::enableActions()
 
     enableAction("make_svn_property",single);
     enableAction("make_left_svn_property",d==1);
+    enableAction("set_rec_property_dir",d==1);
     enableAction("get_svn_property",single);
     enableAction("make_svn_remove",(multi||single));
     enableAction("make_svn_remove_left",d>0);
@@ -722,6 +731,8 @@ void MainTreeWidget::enableActions()
     enableAction("make_svn_unlock",(multi||single));
 
     enableAction("make_svn_ignore",(single)&&si->parent()!=0&&!si->isRealVersioned());
+    enableAction("make_left_add_ignore_pattern",(d==1)&& isWorkingCopy());
+    enableAction("make_right_add_ignore_pattern",dir && isWorkingCopy());
 
     enableAction("make_svn_rename",single && (!isWorkingCopy()||si!=m_Data->m_Model->firstRootChild()));
     enableAction("make_svn_copy",single && (!isWorkingCopy()||si!=m_Data->m_Model->firstRootChild()));
@@ -784,6 +795,8 @@ void MainTreeWidget::enableActions()
     enableAction("openwith",KAuthorized::authorizeKAction("openwith")&&single&&!dir);
     enableAction("show_repository_settings",isopen);
 
+    enableAction("repo_statistic",isopen);
+
     temp = filesActions()->action("update_log_cache");
     if (temp) {
         temp->setEnabled(remote_enabled);
@@ -843,7 +856,6 @@ void MainTreeWidget::refreshCurrentTree()
         m_Data->m_Model->svnWrapper()->createModifiedCache(baseUri());
     }
     m_Data->m_SortModel->invalidate();
-    //kDebug(9510)<<"Refresh time: "<<t.elapsed()<<" ms"<<endl;
     setUpdatesEnabled(true);
     //viewport()->repaint();
     QTimer::singleShot(1,this,SLOT(readSupportData()));
@@ -950,7 +962,6 @@ void MainTreeWidget::slotClientException(const QString&what)
 
 void MainTreeWidget::slotCacheDataChanged()
 {
-    //kDebug(9510)<<"Cache thread signaled"<<endl;
     m_Data->m_SortModel->invalidate();
     if (isWorkingCopy()) {
         if (!m_Data->m_TimeModified.isActive() && Kdesvnsettings::poll_modified()) {
@@ -968,6 +979,55 @@ void MainTreeWidget::slotIgnore()
 {
     m_Data->m_Model->makeIgnore(SelectedIndex());
     m_Data->m_SortModel->invalidate();
+}
+
+void MainTreeWidget::slotLeftRecAddIgnore()
+{
+	SvnItem* item = DirSelected();
+	if (!item||!item->isDir()) {
+		return;
+	}
+	recAddIgnore(item);
+}
+
+void MainTreeWidget::slotRightRecAddIgnore()
+{
+	SvnItem* item = Selected();
+	if (!item||!item->isDir()) {
+		return;
+	}
+	recAddIgnore(item);
+}
+
+void MainTreeWidget::recAddIgnore(SvnItem*item)
+{
+	EditIgnorePattern * ptr = 0;
+	KDialog * dlg = createOkDialog(&ptr,QString(i18n("Edit pattern to ignore for \"%1\"").arg(item->shortName())),
+			true,"ignore_pattern_dlg");
+    KConfigGroup _k(Kdesvnsettings::self()->config(),"ignore_pattern_dlg");
+    DialogStack _s(dlg,_k);
+    if (dlg->exec()!=QDialog::Accepted) {
+        return;
+    }
+    svn::Depth _d = ptr->depth();
+    QStringList _pattern = ptr->items();
+    bool unignore = ptr->unignore();
+    svn::Revision start(svn::Revision::WORKING);
+    if (!isWorkingCopy()) {
+        start=baseRevision();
+    }
+
+    svn::StatusEntries res;
+    if (!m_Data->m_Model->svnWrapper()->makeStatus(item->fullName(),res,start,_d,true /* all entries */,false,false)) {
+    	return;
+    }
+    for (int i=0; i<res.count();++i) {
+    	if (!res[i]->isRealVersioned() || res[i]->entry().kind()!=svn_node_dir) {
+    		continue;
+    	}
+    	m_Data->m_Model->svnWrapper()->makeIgnoreEntry(res[i]->path(),_pattern,unignore);
+    }
+    refreshCurrentTree();
 }
 
 void MainTreeWidget::slotMakeLogNoFollow()const
@@ -1030,6 +1090,8 @@ void MainTreeWidget::slotDirContextMenu(const QPoint&vp)
     if ( (temp=filesActions()->action("make_svn_dir_log_nofollow")) && temp->isEnabled() && ++count) popup.addAction(temp);
     if ( (temp=filesActions()->action("make_left_svn_property")) && temp->isEnabled() && ++count) popup.addAction(temp);
     if ( (temp=filesActions()->action("make_svn_remove_left")) && temp->isEnabled() && ++count) popup.addAction(temp);
+    if ( (temp=filesActions()->action("make_left_add_ignore_pattern")) && temp->isEnabled() && ++count) popup.addAction(temp);
+    if ( (temp=filesActions()->action("set_rec_property_dir")) && temp->isEnabled() && ++count) popup.addAction(temp);
 
     KService::List offers;
     OpenContextmenu*me=0;
@@ -1095,7 +1157,6 @@ void MainTreeWidget::execContextMenu(const SvnItemList&l)
     emit sigShowPopup(menuname,&target);
     QMenu* popup = static_cast<QMenu*>(target);
     if (!popup) {
-        //kDebug(9510)<<"Error getting popupMenu"<<endl;
         return;
     }
 
@@ -1490,11 +1551,8 @@ void MainTreeWidget::refreshItem(SvnItemModelNode*node)
 
 void MainTreeWidget::slotChangeProperties(const svn::PropertiesMap&pm,const QStringList&dellist,const QString&path)
 {
-    //kDebug(9510)<<"change it"<<endl;
     m_Data->m_Model->svnWrapper()->changeProperties(pm,dellist,path);
-    //kDebug(9510)<<"change it"<<endl;
     SvnItemModelNode* which = SelectedNode();
-    //kDebug(9510)<<(which?which->fullName():"nix") << " -> " << path<<endl;
     if (which && which->fullName()==path) {
         m_Data->m_Model->refreshItem(which);
         dispProperties(true);
@@ -1661,7 +1719,6 @@ void MainTreeWidget::internalDrop(const KUrl::List&_lst,Qt::DropAction action,co
     } else {
         target=baseUri();
     }
-    //kDebug(9510)<<"Target: "<<target<<" "<<l<<endl;
     if (action==Qt::MoveAction) {
         m_Data->m_Model->svnWrapper()->makeMove(lst,target,false);
     } else if (action==Qt::CopyAction) {
@@ -1672,7 +1729,6 @@ void MainTreeWidget::internalDrop(const KUrl::List&_lst,Qt::DropAction action,co
 
 void MainTreeWidget::slotUrlDropped(const KUrl::List&_lst,Qt::DropAction action,const QModelIndex&index,bool intern)
 {
-    //kDebug(9510)<<_lst<< " " << action<<" " << intern << endl;
     if (_lst.size()==0) {
         return;
     }
@@ -2117,7 +2173,6 @@ void MainTreeWidget::refreshCurrent(SvnItem*cur)
 void MainTreeWidget::slotReinitItem(SvnItem*item)
 {
     if (!item) {
-        //kDebug(9510)<<"MainTreeWidget::slotReinitItem(SvnItem*item): item == null" << endl;
         return;
     }
     SvnItemModelNode*k = item->sItem();
@@ -2279,6 +2334,23 @@ void MainTreeWidget::slotLeftProperties()
     SvnItem*k = DirSelected();
     if (!k) return;
     m_Data->m_Model->svnWrapper()->editProperties(k,isWorkingCopy()?svn::Revision::WORKING:svn::Revision::HEAD);
+}
+
+void MainTreeWidget::slotDirRecProperty()
+{
+    SvnItem*k = DirSelected();
+    if (!k) return;
+    SetPropertyWidget*ptr = 0;
+    KDialog*dlg = createOkDialog(&ptr,QString(i18n("Set/add property recursive")),true,"property_dlg");
+    if (!dlg) return;
+
+    KConfigGroup _k(Kdesvnsettings::self()->config(),"property_dlg");
+    DialogStack _s(dlg,_k);
+    if (dlg->exec()!=QDialog::Accepted) {
+        return;
+    }
+
+
 }
 
 #include "maintreewidget.moc"

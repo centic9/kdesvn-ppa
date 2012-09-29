@@ -106,6 +106,7 @@ void DbOverview::enableButtons(bool how)
     m_DeleteCacheButton->setEnabled(how);
     m_DeleteRepositoryButton->setEnabled(how);
     m_SettingsButton->setEnabled(how);
+    m_StatisticButton->setEnabled(how);
 }
 
 void DbOverview::itemActivated(const QItemSelection&indexes,const QItemSelection&deindexes)

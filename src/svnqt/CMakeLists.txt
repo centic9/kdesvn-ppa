@@ -21,6 +21,7 @@
 include (SvnqtMacros)
 
 SET(SOURCES
+    client_update_parameter.cpp
     apr.cpp
     client_annotate.cpp
     client_cat.cpp
@@ -69,6 +70,8 @@ SET(SOURCES
     client_parameter.cpp
     client_commit_parameter.cpp
     client_annotate_parameter.cpp
+    reposnotify.cpp
+    annotate_line.cpp
     )
 
 SET(CACHEINST_HEADERS
@@ -119,6 +122,8 @@ SET(INST_HEADERS
     repoparameter.h
     client_commit_parameter.h
     client_annotate_parameter.h
+    client_update_parameter.h
+    reposnotify.h
     )
 
 FILE(GLOB svnhdr RELATIVE  ${CMAKE_CURRENT_SOURCE_DIR} "*.h")
@@ -187,9 +192,9 @@ ELSE(WIN32)
         COMPILE_FLAGS ${CMAKE_SHARED_LIBRARY_CXX_FLAGS})
 ENDIF(WIN32)
 
-SET(LIB_MAJOR 6)
+SET(LIB_MAJOR 7)
 SET(LIB_MINOR 0)
-SET(LIB_RELEASE 3)
+SET(LIB_RELEASE 1)
 
 SET(_soversion ${LIB_MAJOR}.${LIB_MINOR}.${LIB_RELEASE})
 

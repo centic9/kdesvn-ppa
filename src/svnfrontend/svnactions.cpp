@@ -49,6 +49,7 @@
 #include "src/svnqt/client_parameter.h"
 #include "src/svnqt/client_commit_parameter.h"
 #include "src/svnqt/client_annotate_parameter.h"
+#include "src/svnqt/client_update_parameter.h"
 #include "src/svnqt/cache/LogCache.h"
 #include "src/svnqt/cache/ReposLog.h"
 #include "src/svnqt/cache/ReposConfig.h"
@@ -412,7 +413,6 @@ bool SvnActions::singleInfo(const QString&what,const svn::Revision&_rev,svn::Inf
     QString ex;
     QString cacheKey;
     QTime d; d.start();
-    svn::Revision rev = _rev;
     svn::Revision peg = _peg;
     if (!m_Data->m_CurrentContext) return false;
 #ifdef DEBUG_TIMER
@@ -1037,13 +1037,8 @@ bool SvnActions::makeCommit(const svn::Targets&targets)
             return false;
         }
         svn::Pathes _add,_commit,_delete;
+        depth = svn::DepthInfinity;
         for (long i=0; i < _result.count();++i) {
-            if (_result[i].type()==CommitActionEntry::DELETE) {
-                QFileInfo fi(_result[i].name());
-                if (fi.isDir()) {
-                    depth = svn::DepthInfinity;
-                }
-            }
             _commit.append(_result[i].name());
             if (_result[i].type()==CommitActionEntry::ADD_COMMIT) {
                 _add.append(_result[i].name());
@@ -1256,6 +1251,8 @@ void SvnActions::makeDiffinternal(const QString&p1,const svn::Revision&r1,const 
     QDir d1(tdir.name());
     d1.mkdir("svndiff");
     bool ignore_content = Kdesvnsettings::diff_ignore_content();
+    bool gitformat = Kdesvnsettings::diff_gitformat_default();
+    bool copy_as_add = Kdesvnsettings::diff_copies_as_add();
     QWidget*parent = p?p:m_Data->m_ParentList->realWidget();
     QStringList extraOptions;
     if (Kdesvnsettings::diff_ignore_spaces())
@@ -1270,7 +1267,8 @@ void SvnActions::makeDiffinternal(const QString&p1,const svn::Revision&r1,const 
     svn::DiffParameter _opts;
     _opts.path1(p1).path2(p2).tmpPath(tn).
         peg(peg).rev1(r1).rev2(r2).
-        ignoreContentType(ignore_content).extra(extraOptions).depth(svn::DepthInfinity).ignoreAncestry(false).noDiffDeleted(false).changeList(svn::StringArray());
+        ignoreContentType(ignore_content).extra(extraOptions).depth(svn::DepthInfinity).ignoreAncestry(false).noDiffDeleted(false).changeList(svn::StringArray()).
+        git_diff_format(gitformat).copies_as_adds(copy_as_add);
 
     try {
         StopDlg sdlg(m_Data->m_SvnContextListener,parent,0,"Diffing",
@@ -1442,9 +1440,10 @@ void SvnActions::makeUpdate(const QStringList&what,const svn::Revision&rev,svn::
         StopDlg sdlg(m_Data->m_SvnContextListener,m_Data->m_ParentList->realWidget(),0,"Making update",
             i18n("Making update - hit cancel for abort"));
         connect(this,SIGNAL(sigExtraLogMsg(const QString&)),&sdlg,SLOT(slotExtraMessage(const QString&)));
-        svn::Targets pathes(what);
+        svn::UpdateParameter _params;
         m_Data->m_SvnContextListener->cleanUpdatedItems();
-        ret = m_Data->m_Svnclient->update(pathes,rev, depth,false,false,true);
+        _params.targets(what).revision(rev).depth(depth).ignore_externals(false).allow_unversioned(false).sticky_depth(true);
+        ret = m_Data->m_Svnclient->update(_params);
     } catch (const svn::Exception&e) {
         emit clientException(e.msg());
         return;
@@ -2345,9 +2344,14 @@ bool SvnActions::makeStatus(const QString&what, svn::StatusEntries&dlist, const 
 
 bool SvnActions::makeStatus(const QString&what, svn::StatusEntries&dlist, const svn::Revision&where,bool rec,bool all,bool display_ignores,bool updates)
 {
+    svn::Depth _d=rec?svn::DepthInfinity:svn::DepthImmediates;
+    return makeStatus(what,dlist,where,_d,all,display_ignores,updates);
+}
+
+bool SvnActions::makeStatus(const QString&what, svn::StatusEntries&dlist, const svn::Revision&where,svn::Depth _d,bool all,bool display_ignores,bool updates)
+{
     bool disp_remote_details = Kdesvnsettings::details_on_remote_listing();
     QString ex;
-    svn::Depth _d=rec?svn::DepthInfinity:svn::DepthImmediates;
     try {
 #ifdef DEBUG_TIMER
         QTime _counttime;
@@ -2698,22 +2702,13 @@ void SvnActions::clearUpdateCache()
     m_Data->m_UpdateCache.clear();
 }
 
-/*!
-    \fn SvnActions::makeIgnoreEntry(const QString&which)
- */
-bool SvnActions::makeIgnoreEntry(SvnItem*which,bool unignore)
+bool SvnActions::makeIgnoreEntry(const svn::Path&item,const QStringList&ignorePattern,bool unignore)
 {
-    if (!which) return false;
-    QString parentName = which->getParentDir();
-    if (parentName.isEmpty()) return false;
-    QString name = which->shortName();
-    QString ex;
-    svn::Path p(parentName);
-    svn::Revision r(svn_opt_revision_unspecified);
+	svn::Revision r(svn::Revision::UNDEFINED);
 
     QPair<QLONG,svn::PathPropertiesMapList> pmp;
     try {
-        pmp = m_Data->m_Svnclient->propget("svn:ignore",p,r,r);
+        pmp = m_Data->m_Svnclient->propget("svn:ignore",item,r,r);
     } catch (const svn::Exception&e) {
         emit clientException(e.msg());
         return false;
@@ -2726,28 +2721,41 @@ bool SvnActions::makeIgnoreEntry(SvnItem*which,bool unignore)
     }
     bool result = false;
     QStringList lst = data.split('\n',QString::SkipEmptyParts);
-    QStringList::size_type it = lst.indexOf(name);
-    if (it != -1) {
-        if (unignore) {
-            lst.removeAt(it);
-            result = true;
-        }
-    } else {
-        if (!unignore) {
-            lst.append(name);
-            result = true;
-        }
-    }
+    QStringList::size_type it = -1;
+
+	for (int _current = 0; _current < ignorePattern.size(); ++_current) {
+		it = lst.indexOf(ignorePattern[_current]);
+		if (it != -1) {
+			if (unignore) {
+				lst.removeAt(it);
+				result = true;
+			}
+		} else {
+			if (!unignore) {
+				lst.append(ignorePattern[_current]);
+				result = true;
+			}
+		}
+	}
     if (result) {
         data = lst.join("\n");
         try {
-            m_Data->m_Svnclient->propset(svn::PropertiesParameter().propertyName("svn:ignore").propertyValue(data).path(p));
+            m_Data->m_Svnclient->propset(svn::PropertiesParameter().propertyName("svn:ignore").propertyValue(data).path(item));
         } catch (const svn::Exception&e) {
             emit clientException(e.msg());
             return false;
         }
     }
     return result;
+}
+
+bool SvnActions::makeIgnoreEntry(SvnItem*which,bool unignore)
+{
+    if (!which) return false;
+    QString parentName = which->getParentDir();
+    if (parentName.isEmpty()) return false;
+    QString name = which->shortName();
+    return makeIgnoreEntry(svn::Path(parentName),QStringList(name),unignore);
 }
 
 svn::PathPropertiesMapListPtr SvnActions::propList(const QString&which,const svn::Revision&where,bool cacheOnly)
@@ -2837,13 +2845,14 @@ QString SvnActions::searchProperty(QString&Store, const QString&property, const 
     return QString();
 }
 
-bool SvnActions::makeList(const QString&url,svn::DirEntries&dlist,const svn::Revision&where,bool rec)
+bool SvnActions::makeList(const QString&url,svn::DirEntries&dlist,const svn::Revision&where,svn::Depth depth)
 {
     if (!m_Data->m_CurrentContext) return false;
     QString ex;
     try {
-        dlist = m_Data->m_Svnclient->list(url,where,where,rec?svn::DepthInfinity:svn::DepthEmpty,false);
+        dlist = m_Data->m_Svnclient->list(url,where,where,depth,false);
     } catch (const svn::Exception&e) {
+    	kDebug()<< "List fehler: " <<e.msg();
         emit clientException(e.msg());
         return false;
     }

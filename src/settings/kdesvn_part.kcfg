@@ -35,6 +35,14 @@
       <label>Diff ignores all white space</label>
       <default>false</default>
     </entry>
+    <entry key="diff_gitformat_default" type="Bool">
+        <label>Show diff in GIT format</label>
+        <default>false</default>
+    </entry>
+    <entry key="diff_copies_as_add" type="Bool">
+        <label>Show copies as add</label>
+        <default>false</default>
+    </entry>
     <entry key="max_log_messages" type="Int" >
       <label>Maximum number of log messages</label>
       <default>20</default>
@@ -125,6 +133,14 @@
     <entry key="network_on" type="Bool">
         <label>Is networking enabled</label>
         <default>true</default>
+    </entry>
+    <entry key="update_add_as_modification" type="Bool">
+        <label>Local add results in modification instead of conflicts</label>
+        <default>true</default>
+    </entry>
+    <entry key="update_make_parents" type="Bool">
+        <label>create any non-existent parent at depth=empty</label>
+        <default>false</default>
     </entry>
   </group>
   <group name="diffmerge_items">

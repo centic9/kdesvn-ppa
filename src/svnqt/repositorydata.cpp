@@ -27,10 +27,14 @@
 #include "svnqt/repositorylistener.h"
 #include "svnqt/svnfilestream.h"
 #include "svnqt/repoparameter.h"
+#include "svnqt/reposnotify.h"
 
 #include <svn_fs.h>
 #include <svn_path.h>
 #include <svn_config.h>
+#ifdef HAS_SVN_VERSION_H
+#include <svn_version.h>
+#endif
 
 namespace svn {
 
@@ -86,6 +90,19 @@ void RepositoryData::warning_func(void *baton, svn_error_t *err)
     }
 }
 
+void RepositoryData::repo_notify_func(void* baton, const svn_repos_notify_t* notify, apr_pool_t* scratch_pool)
+{
+    Q_UNUSED(scratch_pool)
+    RepositoryData*_r = (RepositoryData*)baton;
+    if (!notify||!_r)  return;
+    ReposNotify _rn(notify);
+    QString msg = _rn;
+    
+    if (msg.length()>0) {
+        _r->reposFsWarning(msg);
+    }
+}
+
 void RepositoryData::reposFsWarning(const QString&msg)
 {
     if (m_Listener) {
@@ -118,7 +135,11 @@ void RepositoryData::Close()
 svn_error_t * RepositoryData::Open(const QString&path)
 {
     Close();
+#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 7) || SVN_VER_MAJOR>1)
+    svn_error_t * error = svn_repos_open2(&m_Repository,path.TOUTF8(),NULL,m_Pool);
+#else
     svn_error_t * error = svn_repos_open(&m_Repository,path.TOUTF8(),m_Pool);
+#endif
     if (error!=0L) {
         m_Repository=0;
         return error;
@@ -177,7 +198,11 @@ svn_error_t * RepositoryData::CreateOpen(const CreateRepoParameter&params)
     SVN_ERR(svn_config_get_config(&config, 0, m_Pool));
     const char*repository_path = apr_pstrdup (m_Pool,params.path().TOUTF8());
 
+#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 6) || SVN_VER_MAJOR>1)
+    repository_path = svn_dirent_internal_style(repository_path, m_Pool);
+#else
     repository_path = svn_path_internal_style(repository_path, m_Pool);
+#endif
 
     if (svn_path_is_url(repository_path)) {
         return svn_error_createf(SVN_ERR_CL_ARG_PARSING_ERROR, NULL,
@@ -202,17 +227,27 @@ svn_error_t* RepositoryData::dump(const QString&output,const svn::Revision&start
     }
     Pool pool;
     svn::stream::SvnFileOStream out(output);
-    RepoOutStream backstream(this);
     svn_revnum_t _s,_e;
     _s = start.revnum();
     _e = end.revnum();
+
+#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 7) || SVN_VER_MAJOR>1)
+    SVN_ERR(svn_repos_dump_fs3(m_Repository,
+                   out, _s, _e,incremental,use_deltas,
+                   RepositoryData::repo_notify_func,
+                   this,
+                   RepositoryData::cancel_func,
+                   m_Listener,
+                   pool));
+#else
+    RepoOutStream backstream(this);
     SVN_ERR(svn_repos_dump_fs2(m_Repository,out,backstream,_s,_e,incremental,use_deltas,
         RepositoryData::cancel_func,m_Listener,pool));
-
+#endif
     return SVN_NO_ERROR;
 }
 
-svn_error_t* RepositoryData::loaddump(const QString&dump,svn_repos_load_uuid uuida, const QString&parentFolder, bool usePre, bool usePost)
+svn_error_t* RepositoryData::loaddump(const QString&dump,svn_repos_load_uuid uuida, const QString&parentFolder, bool usePre, bool usePost,bool validateProps)
 {
     if (!m_Repository) {
         return svn_error_create(SVN_ERR_CANCELLED,0,QObject::tr("No repository selected.").TOUTF8());
@@ -227,9 +262,17 @@ svn_error_t* RepositoryData::loaddump(const QString&dump,svn_repos_load_uuid uui
     } else {
         dest_path=apr_pstrdup (pool,parentFolder.TOUTF8());
     }
-
+#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 6) || SVN_VER_MAJOR>1)
+    src_path = svn_dirent_internal_style(src_path, pool);
+    SVN_ERR(svn_repos_load_fs3(m_Repository,infile,uuida,dest_path,usePre?1:0,usePost?1:0,validateProps?1:0,
+                               RepositoryData::repo_notify_func,
+                               this,RepositoryData::cancel_func,m_Listener,pool));
+#else
+    Q_UNUSED(validateProps);
     src_path = svn_path_internal_style(src_path, pool);
     SVN_ERR(svn_repos_load_fs2(m_Repository,infile,backstream,uuida,dest_path,usePre?1:0,usePost?1:0,RepositoryData::cancel_func,m_Listener,pool));
+#endif
+
     return SVN_NO_ERROR;
 }
 
@@ -238,8 +281,13 @@ svn_error_t* RepositoryData::hotcopy(const QString&src,const QString&dest,bool c
     Pool pool;
     const char*src_path = apr_pstrdup (pool,src.TOUTF8());
     const char*dest_path = apr_pstrdup (pool,dest.TOUTF8());
+#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 6) || SVN_VER_MAJOR>1)
+    src_path = svn_dirent_internal_style(src_path, pool);
+    dest_path = svn_dirent_internal_style(dest_path, pool);
+#else
     src_path = svn_path_internal_style(src_path, pool);
     dest_path = svn_path_internal_style(dest_path, pool);
+#endif
     SVN_ERR(svn_repos_hotcopy(src_path,dest_path,cleanlogs?1:0,pool));
     return SVN_NO_ERROR;
 }

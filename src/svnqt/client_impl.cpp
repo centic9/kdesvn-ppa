@@ -35,6 +35,7 @@
 #include "svnqt/client_impl.h"
 #include "svnqt/svnqt_defines.h"
 #include "svnqt/exception.h"
+#include "svnqt/helper.h"
 
 #include "svn_opt.h"
 #include "svn_ra.h"
@@ -96,34 +97,7 @@ namespace svn
 
   apr_hash_t * Client_impl::map2hash(const PropertiesMap&aMap,const Pool&pool)
   {
-      if (aMap.count()==0) {
-          return 0;
-      }
-      apr_hash_t * hash = apr_hash_make(pool);
-      PropertiesMap::ConstIterator it;
-      const char*propval;
-      const char*propname;
-      QByteArray s,n;
-      for (it=aMap.begin();it!=aMap.end();++it) {
-          s=it.value().TOUTF8();
-          n=it.key().TOUTF8();
-          propval=apr_pstrndup(pool,s,s.size());
-          propname=apr_pstrndup(pool,n,n.size());
-          apr_hash_set(hash,propname,APR_HASH_KEY_STRING,propval);
-      }
-      return hash;
-  }
-
-  apr_array_header_t * Client_impl::revListToHeader(const RevisionRanges&_ranges,const Pool&pool)
-  {
-    apr_array_header_t * revision_ranges = apr_array_make(pool, 0, sizeof(svn_opt_revision_range_t *));
-    for (int i = 0; i<_ranges.size();++i) {
-        svn_opt_revision_range_t * range = (svn_opt_revision_range_t *)apr_palloc(pool, sizeof(*range));
-        range->start = *(_ranges[i].first);
-        range->end = *(_ranges[i].second);
-        APR_ARRAY_PUSH(revision_ranges,svn_opt_revision_range_t *) = range;
-    }
-    return revision_ranges;
+      return svn::internal::Map2Hash(aMap).hash(pool);
   }
 
   bool Client_impl::RepoHasCapability(const Path&repository,Capability capability)

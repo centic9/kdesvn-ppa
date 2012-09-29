@@ -33,6 +33,7 @@
 
 #include <svn_repos.h>
 #include <svn_error.h>
+#include <svn_version.h>
 
 namespace svn {
 
@@ -57,7 +58,7 @@ public:
 
     void reposFsWarning(const QString&msg);
     svn_error_t* dump(const QString&output,const svn::Revision&start,const svn::Revision&end, bool incremental, bool use_deltas);
-    svn_error_t* loaddump(const QString&dump,svn_repos_load_uuid uuida, const QString&parentFolder, bool usePre, bool usePost);
+    svn_error_t* loaddump(const QString& dump, svn_repos_load_uuid uuida, const QString& parentFolder, bool usePre, bool usePost, bool validateProps);
     static svn_error_t* hotcopy(const QString&src,const QString&dest,bool cleanlogs);
 
 protected:
@@ -67,6 +68,9 @@ protected:
 
 private:
     static void warning_func(void *baton, svn_error_t *err);
+    static void repo_notify_func(void *baton,
+                                        const svn_repos_notify_t *notify,
+                                        apr_pool_t *scratch_pool);
     static svn_error_t*cancel_func(void*baton);
 };
 
