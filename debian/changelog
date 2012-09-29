@@ -1,3 +1,10 @@
+kdesvn (1.6.0-0ubuntu0~ppa1) precise; urgency=low
+
+  * New upstream release
+  * All patches are applied upstream now.
+
+ -- Dominik Stadler (Ubuntu key) <dominik.stadler@gmx.at>  Sat, 29 Sep 2012 21:14:34 +0200
+
 kdesvn (1.5.5-4.1) unstable; urgency=low
 
   * Non-maintainer upload.
