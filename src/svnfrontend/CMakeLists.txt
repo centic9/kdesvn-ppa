@@ -19,6 +19,10 @@
  ####
 
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/src/svnfrontend/fronthelpers
+                    ${CMAKE_SOURCE_DIR}/src/svnfrontend/background
+                    ${CMAKE_SOURCE_DIR}/src/svnfrontend/svncharts
+                    ${CMAKE_SOURCE_DIR}/src/ksvnwidgets
+                    ${CMAKE_BINARY_DIR}/src/svnfrontend/svncharts
                     ${CMAKE_BINARY_DIR}/src/svnqt
                     ${CMAKE_BINARY_DIR}/src/ksvnwidgets)
 
@@ -29,7 +33,7 @@ SET(svnfrontendsrc
     createrepo_impl.cpp
     dummydisplay.cpp
     dumprepo_impl.cpp
-    editproperty_impl.cpp
+    editpropswidget.cpp
     fronthelpers/checkoutinfo_impl.cpp
     fronthelpers/checkoutinfo_impl.h
     fronthelpers/rangeinput_impl.cpp
@@ -48,6 +52,8 @@ SET(svnfrontendsrc
     fronthelpers/watchedprocess.cpp
     fronthelpers/watchedprocess.h
     fronthelpers/fronthelpers.h
+    fronthelpers/DialogStack.cpp
+    fronthelpers/DialogStack.h
     graphtree/drawparams.cpp
     graphtree/drawparams.h
     graphtree/elogentry.cpp
@@ -75,35 +81,30 @@ SET(svnfrontendsrc
     models/svnsortfilter.h
     models/svndirsortfilter.cpp
     models/svndirsortfilter.h
-    models/getinfothread.cpp
-    models/getinfothread.h
     hotcopydlg_impl.cpp
     importdir_logmsg.cpp
     itemdisplay.cpp
     loaddmpdlg_impl.cpp
     mergedlg_impl.cpp
-    modifiedthread.cpp
     opencontextmenu.cpp
     propertiesdlg.cpp
     stopdlg.cpp
     svnactions.cpp
     svnitem.cpp
     svnlogdlgimp.cpp
-    tcontextlistener.cpp
     blamedisplay_impl.cpp
-    threadcontextlistenerdata.cpp
-    fillcachethread.cpp
-    fillcachethread.h
     maintreewidget.h
     maintreewidget.cpp
     svntreeview.cpp
     svntreeview.h
-    svnthread.cpp
-    svnthread.h
     database/dboverview.cpp
     database/dboverview.h
     database/dbsettings.cpp
     database/dbsettings.h
+    EditIgnorePattern.cpp
+    EditIgnorePattern.h
+    setpropertywidget.cpp
+    setpropertywidget.h
     )
 
 SET(svnfrontendui
@@ -120,6 +121,8 @@ SET(svnfrontendui
     blamedisplay.ui
     svnlogdlg.ui
     treeWidget.ui
+    editignorepattern.ui
+    setproperty.ui
     database/dboverview.ui
     database/dbsettings.ui
     )
@@ -129,9 +132,12 @@ FILE(GLOB hdr RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "*.h")
 KDE_AUTOMOC(${svnfrontendsrc})
 KDE_ADD_UI_FILES(frontend_ui_sources ${svnfrontendui})
 
+
+ADD_SUBDIRECTORY(background)
+
 ADD_LIBRARY(svnfrontend STATIC ${svnfrontendsrc} ${frontend_ui_sources} ${hdr})
 SET_TARGET_PROPERTIES(svnfrontend
     PROPERTIES
     COMPILE_FLAGS ${CMAKE_SHARED_LIBRARY_CXX_FLAGS})
 
-ADD_DEPENDENCIES(svnfrontend ksvnwidgets)
+ADD_DEPENDENCIES(svnfrontend ksvnwidgets svncharts)

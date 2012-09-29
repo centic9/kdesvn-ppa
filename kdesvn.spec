@@ -1,7 +1,7 @@
 # norootforbuild
 Summary:   A subversion client for the KDE with KIO integration.
 Name:      kdesvn
-Version:   1.5.5
+Version:   1.6.0
 Release:   1%{?dist}
 License:   LGPL
 Vendor:    Rajko Albrecht <ral@alwins-world.de>
@@ -9,13 +9,13 @@ Url:       http://kdesvn.alwins-world.de
 Group:     Development/Tools
 Source:    kdesvn-%version.tar.bz2
 BuildRoot: %{_tmppath}/%{name}-root
-Requires: subversion >= 1.3.0
+Requires: subversion >= 1.6.0
 Requires: /usr/bin/dot
 BuildRequires: cmake >= 2.4
 BuildRequires: gcc-c++
 BuildRequires: apr-devel
 BuildRequires: apr-util-devel
-BuildRequires: subversion-devel >= 1.3.0
+BuildRequires: subversion-devel >= 1.6.0
 BuildRequires: kdelibs-devel >= 4.1
 
 %description

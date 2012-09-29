@@ -42,7 +42,7 @@ class KBookmarkActionMenu;
  *
  * @short Main window class
  * @author Rajko Albrecht <ral@alwins-world.de>
- * @version $Rev: 2056 $
+ * @version $Rev: 2057 $
  */
 class kdesvn : public KParts::MainWindow,public KBookmarkOwner
 {

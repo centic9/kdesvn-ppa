@@ -103,6 +103,8 @@ protected Q_SLOTS:
     void slotClientException(const QString&);
 
     void slotIgnore();
+    void slotLeftRecAddIgnore();
+    void slotRightRecAddIgnore();
     void slotMakeLog()const;
     void slotMakeLogNoFollow()const;
     void slotDirMakeLogNoFollow()const;
@@ -143,6 +145,7 @@ protected Q_SLOTS:
     void slotCommit();
     void slotDirCommit();
     void slotDirUpdate();
+    void slotDirRecProperty();
 
     void slotDirSelectionChanged(const QItemSelection&,const QItemSelection&);
 
@@ -182,6 +185,8 @@ protected:
 
     void checkUseNavigation(bool startup = false);
     void makeDelete(const SvnItemList&lst);
+
+    void recAddIgnore(SvnItem*which);
 
 private:
     MainTreeWidgetData*m_Data;

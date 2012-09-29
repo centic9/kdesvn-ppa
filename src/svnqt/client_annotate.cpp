@@ -33,6 +33,7 @@
 // svncpp
 #include "svnqt/client_impl.h"
 #include "svnqt/svnqt_defines.h"
+#include "svnqt/helper.h"
 #include "src/svnqt/client_annotate_parameter.h"
 
 // Subversion api
@@ -42,8 +43,34 @@
 
 namespace svn
 {
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 5)) || (SVN_VER_MAJOR > 1)
     static svn_error_t *
+#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 7)) || (SVN_VER_MAJOR > 1)
+            annotateReceiver(void *baton, 
+                             svn_revnum_t start_revnum, 
+                             svn_revnum_t end_revnum, 
+                             apr_int64_t line_no,
+                             svn_revnum_t revision,
+                             apr_hash_t *rev_props, 
+                             svn_revnum_t merge_revision,
+                             apr_hash_t *merged_rev_props,
+                             const char *merge_path,
+                             const char *line, 
+                             svn_boolean_t local_change,
+                             apr_pool_t *pool)
+    {
+        AnnotatedFile * entries = (AnnotatedFile *) baton;
+        PropertiesMap _map = svn::internal::Hash2Map(rev_props,pool);
+        PropertiesMap _merge_map = svn::internal::Hash2Map(merged_rev_props,pool);
+        entries->push_back (AnnotateLine(line_no, 
+                                         revision,_map,
+                                         line,
+                                         merge_revision,_merge_map,merge_path,
+                                         start_revnum,end_revnum,local_change
+                                        )
+                           );
+        return NULL;
+    }
+#else
             annotateReceiver(void *baton,
                               apr_int64_t line_no,
                               svn_revnum_t revision,
@@ -62,34 +89,19 @@ namespace svn
                             merge_author,merge_date,merge_path));
         return NULL;
     }
-#else
-  static svn_error_t *
-  annotateReceiver(void *baton,
-                    apr_int64_t line_no,
-                    svn_revnum_t revision,
-                    const char *author,
-                    const char *date,
-                    const char *line,
-                    apr_pool_t *)
-  {
-    AnnotatedFile * entries = (AnnotatedFile *) baton;
-    entries->push_back (
-      AnnotateLine (line_no, revision,
-                    author?author:"",
-                    date?date:"",
-                    line?line:""));
-
-    return NULL;
-  }
 #endif
-
   void
   Client_impl::annotate (AnnotatedFile&target,const AnnotateParameter&params) throw (ClientException)
   {
     Pool pool;
     svn_error_t *error;
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 5)) || (SVN_VER_MAJOR > 1)
-    error = svn_client_blame4(
+#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 7)) || (SVN_VER_MAJOR > 1)
+    error = svn_client_blame5
+#else
+    error = svn_client_blame4
+#endif
+    
+    (
                 params.path().cstr(),
                 params.pegRevision().revision(),
                 params.revisionRange().first,
@@ -101,19 +113,6 @@ namespace svn
                 &target,
                 *m_context, // client ctx
                 pool);
-#elif ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 4)) || (SVN_VER_MAJOR > 1)
-    error = svn_client_blame3(
-                params.path().cstr(),
-                params.pegRevision().revision(),
-                params.revisionRange().first,
-                params.revisionRange().second,
-                params.diffOptions().options(pool),
-                params.ignoreMimeTypes(),
-                annotateReceiver,
-                &target,
-                *m_context, // client ctx
-                pool);
-#endif
     if (error != NULL)
     {
       throw ClientException (error);

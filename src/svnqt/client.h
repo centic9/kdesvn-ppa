@@ -62,6 +62,8 @@ class QStringList;
 
 namespace svn
 {
+
+class Url;
   /** Subversion client API.
    *
    * Never use an object of this as global static! This will make problems with subversion
@@ -141,8 +143,8 @@ namespace svn
      * @exception ClientException
      */
     virtual void
-    relocate (const Path & path, const QString &from_url,
-              const QString &to_url, bool recurse) throw (ClientException)=0;
+    relocate (const Path & path, const Url &from_url,
+              const Url &to_url, bool recurse) throw (ClientException)=0;
 
     /**
      * Sets entries for deletion.
@@ -183,19 +185,11 @@ namespace svn
 
     /**
      * Updates the file or directory.
-     * @param path targets.
-     * @param revision the revision number to checkout.
-     *                 Revision::HEAD will checkout the
-     *                 latest revision.
-     * @param depth Depthness for operation
-     * @param ignore_externals ignore externals
-     * @param allow_unversioned will operation not fail if there are unversioned items in tree with same name.
+     * @param params the parameter for subversion
      * @exception ClientException
      */
     virtual Revisions
-    update (const Targets & path, const Revision & revision,
-            Depth depth,bool ignore_externals,bool allow_unversioned,
-            bool sticky_depth) throw (ClientException) = 0;
+    update (const UpdateParameter&params) throw (ClientException) = 0;
 
     /**
      * Retrieves the contents for a specific @a revision of
@@ -339,7 +333,7 @@ namespace svn
      */
     virtual Revision
     doSwitch (
-              const Path & path, const QString& url,
+              const Path & path, const Url& url,
               const Revision & revision,
               Depth depth,
               const Revision & peg=Revision::UNDEFINED,
@@ -360,7 +354,7 @@ namespace svn
      * @exception ClientException
      */
     virtual svn::Revision
-    import (const Path & path, const QString& url,
+    import (const Path & path, const Url& url,
             const QString& message,
             svn::Depth depth,
             bool no_ignore,bool no_unknown_nodetype,
