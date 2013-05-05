@@ -1,4 +1,1 @@
 # Patches for kdesvn
-doctype_version.patch
-virtual_inheritance.patch
-fix-ftbfs-gcc-4.7-667221.patch

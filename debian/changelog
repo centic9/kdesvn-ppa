@@ -1,3 +1,27 @@
+kdesvn (1.6.0-2) unstable; urgency=low
+
+  * Upload to unstable.
+  * Bump Standards-Version to 3.9.4. No further changes.
+
+ -- Michael Biebl <biebl@debian.org>  Sun, 05 May 2013 03:44:39 +0200
+
+kdesvn (1.6.0-1) experimental; urgency=low
+
+  * Acknowledge NMU, thanks Gregor Hermann.
+  * New upstream release.
+    - Improved support for Subversion 1.7.
+  * Drop patches, all merged upstream.
+  * Bump Build-Depends on libsvn-dev to (>= 1.6). Support for older versions
+    has been removed.
+  * Drop support for the obsolete menu system.
+  * Strip debian/tmp/ from .install files.
+  * Merge kdesvn.manpages into kdesvn.install.
+  * Install translations.
+  * Run dh_install with --list-missing.
+  * Bump soname, libsvnqt6 → libsvnqt7.
+
+ -- Michael Biebl <biebl@debian.org>  Fri, 11 Jan 2013 03:44:32 +0100
+
 kdesvn (1.5.5-4.1) unstable; urgency=low
 
   * Non-maintainer upload.

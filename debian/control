@@ -3,13 +3,13 @@ Section: vcs
 Priority: optional
 Maintainer: Debian KDE Extras Team <pkg-kde-extras@lists.alioth.debian.org>
 Uploaders: Michael Biebl <biebl@debian.org>
-Build-Depends: debhelper (>= 8), cmake (>= 2.4), kdelibs5-dev, libsvn-dev (>= 1.2.0), libssl-dev (>= 0.9.8a), libsqlite3-dev, gettext, pkg-kde-tools (>= 0.9)
-Standards-Version: 3.9.3
+Build-Depends: debhelper (>= 8), cmake (>= 2.4), kdelibs5-dev, libsvn-dev (>= 1.6.0), libssl-dev (>= 0.9.8a), libsqlite3-dev, gettext, pkg-kde-tools (>= 0.9)
+Standards-Version: 3.9.4
 Vcs-Svn: svn://svn.debian.org/pkg-kde/kde-extras/kdesvn/trunk/
 Vcs-Browser: http://svn.debian.org/wsvn/pkg-kde/kde-extras/kdesvn/trunk/
 Homepage: http://kdesvn.alwins-world.de/
 
-Package: libsvnqt6
+Package: libsvnqt7
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
@@ -23,7 +23,7 @@ Description: Qt wrapper library for Subversion
 Package: libsvnqt-dev
 Section: libdevel
 Architecture: any
-Depends: libsvnqt6 (= ${binary:Version}), ${misc:Depends}, libqt4-dev, libsvn-dev
+Depends: libsvnqt7 (= ${binary:Version}), ${misc:Depends}, libqt4-dev, libsvn-dev
 Description: Qt wrapper library for Subversion (development files)
  This package contains the header files and symbolic links that developers
  using svnqt will need.
@@ -59,7 +59,7 @@ Package: kdesvn-dbg
 Section: debug
 Architecture: any
 Priority: extra
-Depends: kdesvn (= ${binary:Version}) , libsvnqt6 (= ${binary:Version}), ${misc:Depends}
+Depends: kdesvn (= ${binary:Version}) , libsvnqt7 (= ${binary:Version}), ${misc:Depends}
 Description: debug symbols for kdesvn
  KDESvn is a graphical client for the Subversion revision control
  system (svn).

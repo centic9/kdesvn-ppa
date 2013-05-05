@@ -11,3 +11,6 @@ override_dh_strip:
 
 override_dh_compress:
 	dh_compress -X .docbook
+
+override_dh_install:
+	dh_install --list-missing

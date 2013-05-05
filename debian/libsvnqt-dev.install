@@ -1,2 +1,2 @@
-debian/tmp/usr/lib/*.so
-debian/tmp/usr/include/svnqt/
+usr/lib/*.so
+usr/include/svnqt/
