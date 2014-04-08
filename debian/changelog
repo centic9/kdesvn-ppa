@@ -1,3 +1,10 @@
+kdesvn (1.6.0-2ubuntu0~ppa1) precise; urgency=low
+
+  * Rebuild to try to make kdesvn work with Subversion 1.8.8.
+  * Import latest debian package changes.
+
+ -- Dominik Stadler (Ubuntu key) <dominik.stadler@gmx.at>  Tue, 08 Apr 2014 22:20:23 +0200
+
 kdesvn (1.6.0-2) unstable; urgency=low
 
   * Upload to unstable.
