@@ -1,3 +1,7 @@
 # debian patch files
 .pc
 
+Build/
+/build/
+/*.kdev4
+
