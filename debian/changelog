@@ -1,3 +1,9 @@
+kdesvn (1.6.0-2ubuntu0~ppa3+git20150303) UNRELEASED; urgency=medium
+
+  * Upgrade to latest version from Git.
+
+ -- Dominik Stadler (Ubuntu key) <dominik.stadler@gmx.at>  Tue, 03 Mar 2015 22:41:40 +0100
+
 kdesvn (1.6.0-2ubuntu0~ppa2) precise; urgency=low
 
   * Add replaces libsvnat6 to avoid installation conflicts.
