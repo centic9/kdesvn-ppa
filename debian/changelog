@@ -1,4 +1,4 @@
-kdesvn (1.6.0-2ubuntu0~ppa3+git20150303) UNRELEASED; urgency=medium
+kdesvn (1.6.0-2ubuntu0~ppa3+git20150303) trusty; urgency=medium
 
   * Upgrade to latest version from Git.
 
