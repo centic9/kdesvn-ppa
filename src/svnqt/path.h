@@ -6,6 +6,7 @@
 /*
  * ====================================================================
  * Copyright (c) 2002-2005 The RapidSvn Group.  All rights reserved.
+ * dev@rapidsvn.tigris.org
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -31,18 +32,18 @@
 #ifndef SVNQT_PATH_H
 #define SVNQT_PATH_H
 
-#include <qstring.h>
-#include "svnqt/svnqt_defines.h"
-#include "svnqt/svnqttypes.h"
+#include <QString>
+#include <svnqt/svnqt_defines.h>
+#include <svnqt/svnqttypes.h>
 
 namespace svn
 {
-  /**
-   * Encapsulation for Subversion Path handling
-   */
-  class SVNQT_EXPORT Path
-  {
-  private:
+/**
+ * Encapsulation for Subversion Path handling
+ */
+class SVNQT_EXPORT Path
+{
+private:
     QString m_path;
 
     /**
@@ -50,9 +51,9 @@ namespace svn
      *
      * @param path Path string - when url this should NOT hold revision as @ parameter!!!!! (will filtered out)
      */
-    void init (const QString& path);
+    void init(const QString &path);
 
-  public:
+public:
     /**
      * Constructor that takes a string as parameter.
      * The string is converted to subversion internal
@@ -60,7 +61,7 @@ namespace svn
      *
      * @param path Path string - when url this should NOT hold revision as @ parameter!!!!! (will filtered out)
      */
-    Path (const QString & path = QString());
+    Path(const QString &path = QString());    //krazy:exclude=explicit
 
     /**
      * Constructor
@@ -68,30 +69,30 @@ namespace svn
      * @see Path::Path (const QString &)
      * @param path Path string - when url this should NOT hold revision as @ parameter!!!!! (will filtered out)
      */
-    Path (const char * path);
+    Path(const char *path);    //krazy:exclude=explicit
 
     /**
      * Copy constructor
      *
      * @param path Path to be copied
      */
-    Path (const Path & path);
+    Path(const Path &path);
 
     /**
      * Assignment operator
      */
-    Path& operator=(const Path&);
+    Path &operator=(const Path &);
 
     /**
      * @return Path string
      */
     const QString &
-    path () const;
+    path() const;
 
     /**
      * @return Path string
      */
-    operator const QString&()const;
+    operator const QString &()const;
 
     /**
      * @return Path as pretty url
@@ -113,6 +114,13 @@ namespace svn
     bool
     isset() const;
 
+    /**
+     * adds a new URL component to the path
+     *
+     * @param component new component to add
+     */
+    void
+    addComponent(const char *component);
 
     /**
      * adds a new URL component to the path
@@ -120,16 +128,7 @@ namespace svn
      * @param component new component to add
      */
     void
-    addComponent (const char * component);
-
-
-    /**
-     * adds a new URL component to the path
-     *
-     * @param component new component to add
-     */
-    void
-    addComponent (const QString & component);
+    addComponent(const QString &component);
 
     /** Reduce path to its parent folder.
      * If the path length is 1 (eg., only "/") it will cleared so
@@ -139,7 +138,6 @@ namespace svn
     void
     removeLast();
 
-
     /**
      * split path in its components
      *
@@ -147,8 +145,7 @@ namespace svn
      * @param basename filename
      */
     void
-    split (QString & dirpath, QString & basename) const;
-
+    split(QString &dirpath, QString &basename) const;
 
     /**
      * split path in its components including
@@ -159,14 +156,13 @@ namespace svn
      * @param ext extension (including leading dot ".")
      */
     void
-    split (QString & dir, QString & filename, QString & ext) const;
-
+    split(QString &dir, QString &filename, QString &ext) const;
 
     /**
      * returns the temporary directory
      */
     static Path
-    getTempDir ();
+    getTempDir();
 
     /** Parse a string for a peg revision
      * @param pathorurl url to parse
@@ -175,21 +171,19 @@ namespace svn
      * @throw svn::ClientException on errors
      */
     static void
-    parsePeg(const QString&pathorurl,Path&_path,svn::Revision&_peg);
-
+    parsePeg(const QString &pathorurl, Path &_path, svn::Revision &_peg);
 
     /** return the length of the path-string */
     unsigned int
-    length () const;
-
+    length() const;
 
     /** returns the path with native separators */
     QString
-    native () const;
+    native() const;
 
     /** returns if the path is a valid url, eg. points to a remote */
     bool isUrl()const;
-  };
+};
 }
 
 #endif

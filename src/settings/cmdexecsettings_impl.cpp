@@ -18,7 +18,6 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.         *
  ***************************************************************************/
 
-
 #include "cmdexecsettings_impl.h"
 
 #include <kdeversion.h>
@@ -27,15 +26,11 @@
 #include <qcheckbox.h>
 #include <klineedit.h>
 
-CmdExecSettings_impl::CmdExecSettings_impl(QWidget* parent)
-: QWidget(parent)
+CmdExecSettings_impl::CmdExecSettings_impl(QWidget *parent)
+    : QWidget(parent)
 {
     setupUi(this);
-#if KDE_IS_VERSION(4, 2, 80)
     kcfg_cmdline_log_minline->setSuffix(ki18np(" line", " lines"));
-#else
-    kcfg_cmdline_log_minline->setSuffix(i18n(" lines"));
-#endif
     kcfg_cmdline_log_minline->setEnabled(kcfg_cmdline_show_logwindow->isChecked());
     kcfg_kio_standard_logmsg->setEnabled(kcfg_kio_use_standard_logmsg->isChecked());
     kcfg_no_konqueror_toplevelmenu->setDisabled(kcfg_no_konqueror_contextmenu->isChecked());
@@ -44,5 +39,3 @@ CmdExecSettings_impl::CmdExecSettings_impl(QWidget* parent)
 CmdExecSettings_impl::~CmdExecSettings_impl()
 {
 }
-
-#include "cmdexecsettings_impl.moc"

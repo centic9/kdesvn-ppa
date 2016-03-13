@@ -23,9 +23,8 @@
 #include "src/settings/kdesvnsettings.h"
 #include "src/svnqt/status.h"
 
-
 ItemDisplay::ItemDisplay()
-    :m_LastException(""),m_isWorkingCopy(false),m_isNetworked(false),m_baseUri("")
+    : m_isWorkingCopy(false), m_isNetworked(false)
 {
 }
 
@@ -34,7 +33,7 @@ bool ItemDisplay::isWorkingCopy()const
     return m_isWorkingCopy;
 }
 
-const QString&ItemDisplay::baseUri()const
+QString ItemDisplay::baseUri()const
 {
     return m_baseUri;
 }
@@ -49,62 +48,60 @@ bool ItemDisplay::isNetworked()const
 
 void ItemDisplay::setWorkingCopy(bool how)
 {
-    m_isWorkingCopy=how;
+    m_isWorkingCopy = how;
 }
 
 void ItemDisplay::setNetworked(bool how)
 {
-    m_isNetworked=how;
+    m_isNetworked = how;
 }
 
-void ItemDisplay::setBaseUri(const QString&uri)
+void ItemDisplay::setBaseUri(const QString &uri)
 {
     m_baseUri = uri;
     /* otherwise subversion lib asserts! */
-    while (m_baseUri.endsWith('/')) {
-        m_baseUri.truncate(m_baseUri.length()-1);
+    while (m_baseUri.endsWith(QLatin1Char('/'))) {
+        m_baseUri.chop(1);
     }
 }
 
-const QString&ItemDisplay::lastError()const
+QString ItemDisplay::lastError()const
 {
     return m_LastException;
 }
 
-
 /*!
     \fn ItemDisplay::filterOut(const SvnItem*)
  */
-bool ItemDisplay::filterOut(const SvnItem*item)
+bool ItemDisplay::filterOut(const SvnItem *item)
 {
     if (!item->stat()->validReposStatus()) {
-        if ( (item->isIgnored() && !Kdesvnsettings::display_ignored_files()) ||
-            ( Kdesvnsettings::hide_unchanged_files() && item->isRealVersioned() && !item->isModified() && !item->isChildModified() )||
-            (!Kdesvnsettings::display_unknown_files() && !item->stat()->isVersioned())
-            ) {
+        if ((item->isIgnored() && !Kdesvnsettings::display_ignored_files()) ||
+                (Kdesvnsettings::hide_unchanged_files() && item->isRealVersioned() && !item->isModified() && !item->isChildModified()) ||
+                (!Kdesvnsettings::display_unknown_files() && !item->stat()->isVersioned())
+           ) {
             return true;
         }
     }
     return false;
 }
 
-
 /*!
     \fn ItemDisplay::relativePath(const SvnItem*item)
  */
-QString ItemDisplay::relativePath(const SvnItem*item)
+QString ItemDisplay::relativePath(const SvnItem *item)
 {
-    if (!isWorkingCopy()||!item->fullName().startsWith(baseUri())) {
+    if (!isWorkingCopy() || !item->fullName().startsWith(baseUri())) {
         return item->fullName();
     }
     QString name = item->fullName();
-    if (name==baseUri()) {
-        name = ".";
+    if (name == baseUri()) {
+        name = QLatin1Char('.');
     } else {
-        name = name.right(name.length()-baseUri().length()-1);
+        name = name.right(name.length() - baseUri().length() - 1);
     }
     if (name.isEmpty()) {
-        name = ".";
+        name = QLatin1Char('.');
     }
     return name;
 }

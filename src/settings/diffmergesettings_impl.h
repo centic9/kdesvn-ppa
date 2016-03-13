@@ -22,10 +22,11 @@
 
 #include "src/settings/ui_diffmergesettings.h"
 
-class DiffMergeSettings_impl: public QWidget, public Ui::DiffMergeSettings {
-Q_OBJECT
+class DiffMergeSettings_impl: public QWidget, public Ui::DiffMergeSettings
+{
+    Q_OBJECT
 public:
-    DiffMergeSettings_impl(QWidget *parent = 0);
+    explicit DiffMergeSettings_impl(QWidget *parent = 0);
     virtual ~DiffMergeSettings_impl();
 protected slots:
     virtual void diffDispChanged(bool);

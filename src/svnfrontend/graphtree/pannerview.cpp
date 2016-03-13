@@ -27,17 +27,16 @@
 
 #include <kdebug.h>
 
-class GraphPanMark:public QGraphicsRectItem
+class GraphPanMark: public QGraphicsRectItem
 {
 public:
-    GraphPanMark(QGraphicsItem*p=0);
+    GraphPanMark(QGraphicsItem *p = 0);
     virtual ~GraphPanMark();
     virtual int type()const;
-    virtual void paint(QPainter*,const QStyleOptionGraphicsItem*,QWidget*);
+    virtual void paint(QPainter *, const QStyleOptionGraphicsItem *, QWidget *);
 };
 
-
-GraphPanMark::GraphPanMark(QGraphicsItem*p)
+GraphPanMark::GraphPanMark(QGraphicsItem *p)
     : QGraphicsRectItem(p)
 {
     setZValue(1.9);
@@ -52,10 +51,10 @@ GraphPanMark::~GraphPanMark()
 {
 }
 
-void GraphPanMark::paint(QPainter* p,const QStyleOptionGraphicsItem* option, QWidget*w)
+void GraphPanMark::paint(QPainter *p, const QStyleOptionGraphicsItem *option, QWidget *w)
 {
     if (option->levelOfDetail < .5) {
-        QGraphicsRectItem::paint(p,option,w);
+        QGraphicsRectItem::paint(p, option, w);
     }
 }
 
@@ -64,11 +63,10 @@ int GraphPanMark::type()const
     return GRAPHTREE_PANMARK;
 }
 
-PannerView::PannerView(QWidget* parent, const char* name)
+PannerView::PannerView(QWidget *parent)
     : QGraphicsView(parent)// KDE4 check , /*Qt::WNoAutoErase |*/ Qt::WA_StaticContents/*WStaticContents*/ )
 {
-    setObjectName(name?name:"PannerView");
-    m_Mark=0;
+    m_Mark = 0;
     m_Moving = false;
     viewport()->setFocusPolicy(Qt::NoFocus);
     setFocusPolicy(Qt::NoFocus);
@@ -82,7 +80,7 @@ PannerView::~PannerView()
     }
 }
 
-void PannerView::setScene(QGraphicsScene*sc)
+void PannerView::setScene(QGraphicsScene *sc)
 {
     if (!sc) {
         if (scene()) {
@@ -97,7 +95,7 @@ void PannerView::setScene(QGraphicsScene*sc)
     QGraphicsView::setScene(sc);
 }
 
-void PannerView::setZoomRect(const QRectF& theValue)
+void PannerView::setZoomRect(const QRectF &theValue)
 {
     m_ZoomRect = theValue;
     if (m_Mark) {
@@ -108,12 +106,12 @@ void PannerView::setZoomRect(const QRectF& theValue)
 /*!
     \fn PannerView::contentsMouseMoveEvent(QMouseEvent* e)
  */
-void PannerView::mouseMoveEvent(QMouseEvent* e)
+void PannerView::mouseMoveEvent(QMouseEvent *e)
 {
     if (m_Moving) {
         QPointF sPos = mapToScene(e->pos());
         emit zoomRectMoved(sPos.x() - m_ZoomRect.center().x(),
-                            sPos.y() - m_ZoomRect.center().y());
+                           sPos.y() - m_ZoomRect.center().y());
 
         m_LastPos = e->pos();
     }
@@ -122,7 +120,7 @@ void PannerView::mouseMoveEvent(QMouseEvent* e)
 /*!
     \fn PannerView::contentsMousePressEvent(QMouseEvent* e)
  */
-void PannerView::mousePressEvent(QMouseEvent* e)
+void PannerView::mousePressEvent(QMouseEvent *e)
 {
     if (m_ZoomRect.isValid()) {
         QPointF sPos = mapToScene(e->pos());
@@ -138,7 +136,7 @@ void PannerView::mousePressEvent(QMouseEvent* e)
 /*!
     \fn PannerView::contentsMouseReleaseEvent(QMouseEvent*)
  */
-void PannerView::mouseReleaseEvent(QMouseEvent*)
+void PannerView::mouseReleaseEvent(QMouseEvent *)
 {
     m_Moving = false;
     emit zoomRectMoveFinished();
@@ -152,6 +150,3 @@ void PannerView::updateCurrentRect()
     if (m_ZoomRect.isValid()) {
     }
 }
-
-#include "pannerview.moc"
-

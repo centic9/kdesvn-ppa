@@ -28,13 +28,12 @@
 #include <qcheckbox.h>
 #include <qlabel.h>
 
-AuthDialogImpl::AuthDialogImpl(const QString & realm,const QString&user,QWidget *parent, const char *name)
-    :KDialog(parent)
+AuthDialogImpl::AuthDialogImpl(const QString &realm, const QString &user, QWidget *parent)
+    : KDialog(parent)
 {
-    setObjectName(name);
-    m_AuthWidget = new AuthDialogWidget(realm,user,parent);
+    m_AuthWidget = new AuthDialogWidget(realm, user, parent);
     setMainWidget(m_AuthWidget);
-    setButtons( KDialog::Ok | KDialog::Cancel | KDialog::Help);
+    setButtons(KDialog::Ok | KDialog::Cancel | KDialog::Help);
     connect(this, SIGNAL(helpClicked()), m_AuthWidget, SLOT(slotHelp()));
 }
 
@@ -52,5 +51,3 @@ bool AuthDialogImpl::maySave()const
 {
     return m_AuthWidget->maySave();
 }
-
-#include "authdialogimpl.moc"

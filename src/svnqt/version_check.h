@@ -24,24 +24,21 @@
 #ifndef SVNQT_VERSION_CHECK_H
 #define SVNQT_VERSION_CHECK_H
 
-#include "svnqt/svnqt_defines.h"
+#include <svnqt/svnqt_defines.h>
 
 class QString;
 
-namespace svn {
-    class SVNQT_EXPORT Version {
+namespace svn
+{
+namespace Version
+{
+    SVNQT_EXPORT bool client_version_compatible();
+    SVNQT_EXPORT const QString linked_version();
+    SVNQT_EXPORT const QString running_version();
 
-    public:
-        Version(){}
-        ~Version(){}
-
-        static bool client_version_compatible();
-        static const QString linked_version();
-        static const QString running_version();
-
-        static int version_major();
-        static int version_minor();
-    };
+    SVNQT_EXPORT int version_major();
+    SVNQT_EXPORT int version_minor();
+}
 }
 
 #endif

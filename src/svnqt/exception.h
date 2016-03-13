@@ -6,6 +6,7 @@
 /*
  * ====================================================================
  * Copyright (c) 2002-2005 The RapidSvn Group.  All rights reserved.
+ * dev@rapidsvn.tigris.org
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -31,102 +32,102 @@
 #ifndef SVNQT_EXCEPTION_H
 #define SVNQT_EXCEPTION_H
 
-#include "svnqt/svnqt_defines.h"
+#include <svnqt/svnqt_defines.h>
+
 // subversion api
-#include "svn_client.h"
-#include <qstring.h>
+#include <svn_client.h>
+#include <QString>
 
 namespace svn
 {
 
-  /**
-   * Generic exception class.
-   */
-  class SVNQT_EXPORT Exception
-  {
-  public:
+/**
+ * Generic exception class.
+ */
+class SVNQT_EXPORT Exception
+{
+public:
     /**
      * Constructor.  Assigns the exception reason.
      */
-    Exception (const char * message) throw ();
-    Exception (const QString&message) throw();
+    explicit Exception(const char *message) throw ();
+    explicit Exception(const QString &message) throw();
 
-    virtual ~Exception () throw ();
+    virtual ~Exception() throw ();
 
     /**
      * @return the exception message.
      */
-    virtual const QString& msg() const;
+    virtual const QString &msg() const;
 
     /**
      * @return the outermost error code.
      */
-    apr_status_t apr_err () const;
+    apr_status_t apr_err() const;
 
-    static QString error2msg(svn_error_t*error);
+    static QString error2msg(svn_error_t *error);
 
-  protected:
+protected:
     struct Data;
-    Data * m;
-    void setMessage(const QString&);
+    Data *m;
+    void setMessage(const QString &);
 
-  private:
+private:
 
-    Exception (const Exception &) throw ();
+    Exception(const Exception &) throw ();
 
-    Exception () throw ();
+    Exception() throw ();
 
-    Exception & operator = (const Exception &);
+    Exception &operator = (const Exception &);
 
-  };
+};
 
-  /**
-   * Subversion client exception class.
-   */
-  class SVNQT_EXPORT ClientException : public Exception
-  {
-  public:
+/**
+ * Subversion client exception class.
+ */
+class SVNQT_EXPORT ClientException : public Exception
+{
+public:
     /**
      * Constructor.  Sets the error template and an optional message.
      * @param error the error to display. This will get cleared inside with svn_error_clear
      * so it isn't usable after that!
      */
-    ClientException (svn_error_t * error) throw ();
-
+    explicit ClientException(svn_error_t *error) throw ();
 
     /**
      * Constructor that takes only an apr errorcode
      */
-    ClientException (apr_status_t status) throw ();
+    explicit ClientException(apr_status_t status) throw ();
 
-   /**
-    * Constructor
-    */
-    ClientException (const char*msg) throw ();
+    /**
+     * Constructor
+     */
+    explicit ClientException(const char *msg) throw ();
 
-   /**
-    * Constructor
-    */
-    ClientException (const QString&message) throw();
+    /**
+     * Constructor
+     */
+    explicit ClientException(const QString &message) throw();
 
     /**
      * Copy constructor
      */
-    ClientException (const ClientException & src) throw ();
+    ClientException(const ClientException &src) throw ();
 
-    virtual ~ClientException () throw ();
+    virtual ~ClientException() throw ();
 
-  private:
-    ClientException () throw ();
+private:
+    ClientException() throw ();
 
-    ClientException & operator = (ClientException &);
+    ClientException &operator = (ClientException &);
     static QString getBackTrace();
 
     void init();
     /// backtrace from constructor;
     QString m_backTraceConstr;
 
-  };
+};
 
 }
 

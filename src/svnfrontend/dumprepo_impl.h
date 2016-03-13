@@ -22,19 +22,20 @@
 
 #include "ui_dumprepo_dlg.h"
 
-class DumpRepo_impl: public QWidget, public Ui::DumpRepoDlg {
-Q_OBJECT
+class DumpRepo_impl: public QWidget, public Ui::DumpRepoDlg
+{
+    Q_OBJECT
 public:
-    DumpRepo_impl(QWidget *parent = 0, const char *name = 0);
-    QString reposPath();
-    QString targetFile();
-    bool incremental();
-    bool use_deltas();
-    bool useNumbers();
-    int startNumber();
-    int endNumber();
+    explicit DumpRepo_impl(QWidget *parent = 0);
+    QString reposPath() const;
+    QString targetFile() const;
+    bool incremental() const;
+    bool use_deltas() const;
+    bool useNumbers() const;
+    int startNumber() const;
+    int endNumber() const;
 protected slots:
-    virtual void slotDumpRange(bool);
+    void slotDumpRange(bool);
 };
 
 #endif

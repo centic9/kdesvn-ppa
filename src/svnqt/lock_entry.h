@@ -6,6 +6,7 @@
 /*
  * ====================================================================
  * Copyright (c) 2002-2005 The RapidSvn Group.  All rights reserved.
+ * dev@rapidsvn.tigris.org
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -31,54 +32,54 @@
 #ifndef SVNQT_LOCK_ENTRY_H
 #define SVNQT_LOCK_ENTRY_H
 
-#include "svnqt/svnqt_defines.h"
-#include "svnqt/datetime.h"
+#include <svnqt/svnqt_defines.h>
+#include <svnqt/datetime.h>
 
-#include <qstring.h>
+#include <QString>
 
 // apr
-#include "apr_time.h"
+#include <apr_time.h>
 
 // subversion api
-#include "svn_types.h"
-#include "svn_wc.h"
+#include <svn_types.h>
+#include <svn_wc.h>
 
 namespace svn
 {
-  class SVNQT_EXPORT LockEntry
-  {
-  public:
-    LockEntry ();
+class SVNQT_EXPORT LockEntry
+{
+public:
+    LockEntry();
 
-    LockEntry (const apr_time_t lock_time,
+    LockEntry(const apr_time_t lock_time,
               const apr_time_t expiration_time,
-              const char * lock_owner,
-              const char * lock_comment,
-              const char * lock_token);
+              const char *lock_owner,
+              const char *lock_comment,
+              const char *lock_token);
 
-    void init(const svn_wc_entry_t * src);
+    void init(const svn_wc_entry_t *src);
 
     void init(const apr_time_t lock_time,
               const apr_time_t expiration_time,
-              const char * lock_owner,
-              const char * lock_comment,
-              const char * lock_token);
-    void init(const svn_lock_t*);
-    const QString&Comment()const;
-    const QString&Owner()const;
-    const QString&Token()const;
-    const DateTime&Date()const;
-    const DateTime&Expiration()const;
+              const char *lock_owner,
+              const char *lock_comment,
+              const char *lock_token);
+    void init(const svn_lock_t *);
+    const QString &Comment()const;
+    const QString &Owner()const;
+    const QString &Token()const;
+    const DateTime &Date()const;
+    const DateTime &Expiration()const;
     bool Locked()const;
 
-  protected:
+protected:
     DateTime date;
     DateTime exp;
     QString owner;
     QString comment;
     QString token;
     bool locked;
-  };
+};
 }
 
 #endif

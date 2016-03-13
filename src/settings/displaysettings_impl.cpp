@@ -26,7 +26,7 @@
 #include <kdebug.h>
 
 DisplaySettings_impl::DisplaySettings_impl(QWidget *parent)
-    :QWidget(parent)
+    : QWidget(parent)
 {
     setupUi(this);
 }
@@ -34,5 +34,3 @@ DisplaySettings_impl::DisplaySettings_impl(QWidget *parent)
 DisplaySettings_impl::~DisplaySettings_impl()
 {
 }
-
-#include "displaysettings_impl.moc"

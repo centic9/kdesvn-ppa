@@ -26,22 +26,21 @@
 #include <qcheckbox.h>
 #include <qlabel.h>
 
-AuthDialogWidget::AuthDialogWidget(const QString & realm,const QString&user,QWidget *parent, const char *name)
-    :QWidget(parent),Ui::AuthDialogWidget(),curPass("")
+AuthDialogWidget::AuthDialogWidget(const QString &realm, const QString &user, QWidget *parent)
+    : QWidget(parent), Ui::AuthDialogWidget(), curPass()
 {
     setupUi(this);
-    setObjectName(name);
 
     m_UsernameEdit->setText(user);
-    m_PasswordEdit->setText("");
+    m_PasswordEdit->clear();
     m_StorePasswordButton->setChecked(Kdesvnsettings::store_passwords());
-    QString text = m_StorePasswordButton->text();
     m_StorePasswordButton->setText(
-            m_StorePasswordButton->text()+QString(" (%1)")
-            .arg((Kdesvnsettings::passwords_in_wallet()?i18n("into KDE Wallet"):i18n("into subversions simple storage"))));
+        Kdesvnsettings::passwords_in_wallet()
+        ? i18n("Store password (into KDE Wallet)")
+        : i18n("Store password (into Subversion' simple storage)"));
     if (!realm.isEmpty()) {
-        m_RealmLabel->setText(m_RealmLabel->text()+' '+realm);
-        resize( QSize(334, 158).expandedTo(minimumSizeHint()) );
+        m_RealmLabel->setText(i18n("Enter authentication info for %1", realm));
+        resize(QSize(334, 158).expandedTo(minimumSizeHint()));
     }
 }
 
@@ -54,7 +53,7 @@ const QString AuthDialogWidget::Username()const
     return m_UsernameEdit->text();
 }
 
-const QString AuthDialogWidget::Password()
+const QString AuthDialogWidget::Password() const
 {
     return m_PasswordEdit->text();
 }
@@ -63,5 +62,3 @@ bool AuthDialogWidget::maySave()const
 {
     return m_StorePasswordButton->isChecked();
 }
-
-#include "authdialogwidget.moc"

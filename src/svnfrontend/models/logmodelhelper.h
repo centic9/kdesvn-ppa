@@ -24,48 +24,79 @@
 #include <QString>
 
 #include "src/svnqt/svnqttypes.h"
-#include "src/svnqt/shared_pointer.h"
 #include "src/svnqt/log_entry.h"
 
-class LogChangePathItem:public QTreeWidgetItem
+class LogChangePathItem: public QTreeWidgetItem
 {
 public:
-    LogChangePathItem(QTreeWidget*parent,const svn::LogChangePathEntry&);
-    LogChangePathItem(const svn::LogChangePathEntry&);
-    virtual ~LogChangePathItem(){}
+    explicit LogChangePathItem(const svn::LogChangePathEntry &, QTreeWidget *view = 0);
+    virtual ~LogChangePathItem() {}
 
-    QChar action() const{return _action;}
-    const QString& path() const{return _path;}
-    const QString& source() const{return _source;}
-    QLONG revision() const{ return _revision;}
+    QChar action() const
+    {
+        return _action;
+    }
+    const QString &path() const
+    {
+        return _path;
+    }
+    const QString &source() const
+    {
+        return _source;
+    }
+    qlonglong revision() const
+    {
+        return _revision;
+    }
 
 protected:
-    QString _path,_source;
+    QString _path, _source;
     QChar _action;
-    QLONG _revision;
+    qlonglong _revision;
 
-    void init(const svn::LogChangePathEntry&);
+    void init(const svn::LogChangePathEntry &);
 };
 
 class SvnLogModelNode
 {
 
 public:
-    SvnLogModelNode(const svn::LogEntry&_entry);
+    explicit SvnLogModelNode(const svn::LogEntry &_entry);
 
-    const QList<svn::LogChangePathEntry>&changedPaths()const;
-    void setChangedPaths(const svn::LogEntry&);
+    const svn::LogChangePathEntries &changedPaths()const;
+    void setChangedPaths(const svn::LogEntry &);
 
-    QLONG revision()const{return _data.revision;}
-    const QString&author()const{return _data.author;}
-    const QString&message()const{return _data.message;}
-    const QString&shortMessage()const{return _shortMessage;}
-    const QDateTime& date()const{return _date;}
-    void setRealName(const QString&_n){_realName=_n;}
-    const QString&realName()const{return _realName;}
+    qlonglong revision()const
+    {
+        return _data.revision;
+    }
+    const QString &author()const
+    {
+        return _data.author;
+    }
+    const QString &message()const
+    {
+        return _data.message;
+    }
+    const QString &shortMessage()const
+    {
+        return _shortMessage;
+    }
+    const QDateTime &date()const
+    {
+        return _date;
+    }
+    void setRealName(const QString &_n)
+    {
+        _realName = _n;
+    }
+    const QString &realName()const
+    {
+        return _realName;
+    }
 
-    bool copiedFrom(QString&_n,long&_rev)const;
-    static bool isParent(const QString&_par,const QString&tar);
+    bool copiedFrom(QString &_n, long &_rev)const;
+    static bool isParent(const QString &_par, const QString &tar);
 
 protected:
     //we require the ownership!

@@ -22,40 +22,40 @@
 #include <QList>
 
 DummyDisplay::DummyDisplay()
- : ItemDisplay()
+    : ItemDisplay()
 {
 }
-
 
 DummyDisplay::~DummyDisplay()
 {
 }
 
-QWidget*DummyDisplay::realWidget()
+QWidget *DummyDisplay::realWidget()
 {
     return 0L;
 }
 
-SvnItem*DummyDisplay::Selected()const
+SvnItem *DummyDisplay::Selected()const
 {
     return 0L;
 }
 
-void DummyDisplay::SelectionList(QList<SvnItem*>&)const
+SvnItemList DummyDisplay::SelectionList()const
 {
+    return SvnItemList();
 }
 
-bool DummyDisplay::openUrl( const KUrl &,bool)
+bool DummyDisplay::openUrl(const KUrl &, bool)
 {
     return false;
 }
 
-SvnItem*DummyDisplay::SelectedOrMain()const
+SvnItem *DummyDisplay::SelectedOrMain()const
 {
     return 0;
 }
 
-const svn::Revision&DummyDisplay::baseRevision()const
+svn::Revision DummyDisplay::baseRevision()const
 {
     static svn::Revision fake(svn::Revision::UNDEFINED);
     return fake;

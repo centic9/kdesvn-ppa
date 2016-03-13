@@ -21,39 +21,36 @@
 #ifndef SVNTHREAD_H
 #define SVNTHREAD_H
 
-#include "ccontextlistener.h"
+#include "tcontextlistener.h"
 #include "frontendtypes.h"
 
 #include <QThread>
-#include <QEvent>
-#include <QQueue>
-#include <QMutex>
-#include <QReadWriteLock>
 
 //! Base class for creating threads holding an subversion connection
-class SvnThread:public QThread
+class SvnThread: public QThread
 {
+    Q_OBJECT
 public:
     //! Creator
     /*!
      * \param parent A qobject derived class which should have a qt-slot slotNotifyMessage(const QString&)
      */
-    SvnThread(QObject*parent);
+    explicit SvnThread(QObject *parent);
     virtual ~SvnThread();
-    virtual void run()=0;
+    virtual void run() = 0;
     virtual void cancelMe();
 
 protected:
-    svn::Client* m_Svnclient;
     svn::ContextP m_CurrentContext;
-    svn::smart_pointer<ThreadContextListener> m_SvnContextListener;
-    QObject*m_Parent;
+    svn::ClientP m_Svnclient;
+    ThreadContextListener *m_SvnContextListener;
+    QObject *m_Parent;
 
     //! a base method often needed
     /*!
-     * Exceptions will NOT catched, the caller has to do it!
+     * Exceptions will NOT be caught, the caller has to do it!
      */
-    void itemInfo(const QString&what,svn::InfoEntry&target,const svn::Revision&_rev=svn::Revision::UNDEFINED,const svn::Revision&_peg = svn::Revision::UNDEFINED);
+    void itemInfo(const QString &what, svn::InfoEntry &target, const svn::Revision &_rev = svn::Revision::UNDEFINED, const svn::Revision &_peg = svn::Revision::UNDEFINED);
 };
 
 #endif

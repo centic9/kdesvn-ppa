@@ -24,16 +24,12 @@
 #include "kdesvn-config.h"
 
 #include <kparts/part.h>
-#include <kparts/genericfactory.h>
-#include <kparts/factory.h>
 #include <kparts/statusbarextension.h>
 #include <kparts/browserextension.h>
 
-#include <KComponentData>
+#include <KAboutData>
 
 class kdesvnView;
-class QPainter;
-class KUrl;
 class KdesvnBrowserExtension;
 class KAboutApplicationDialog;
 
@@ -45,7 +41,7 @@ class KAboutApplicationDialog;
  * @author Rajko Albrecht <ral@alwins-world.de>
  * @version 0.1
  */
-class KDESVN_EXPORT kdesvnpart : public KParts::ReadOnlyPart
+class kdesvnpart : public KParts::ReadOnlyPart
 {
     Q_OBJECT
 public:
@@ -53,26 +49,26 @@ public:
      * Default constructor
      */
     kdesvnpart(QWidget *parentWidget,
-                    QObject *parent, const QVariantList& args = QVariantList());
+               QObject *parent, const QVariantList &args = QVariantList());
 
     kdesvnpart(QWidget *parentWidget,
-               QObject *parent, bool ownapp, const QVariantList& args = QVariantList());
+               QObject *parent, bool ownapp, const QVariantList &args = QVariantList());
 
     /**
      * Destructor
      */
     virtual ~kdesvnpart();
     virtual bool closeUrl();
-    static KAboutData* createAboutData();
+    static KAboutData *createAboutData();
 
 Q_SIGNALS:
     void refreshTree();
     void settingsChanged();
 
 public slots:
-    virtual void slotDispPopup(const QString&,QWidget**target);
+    virtual void slotDispPopup(const QString &, QWidget **target);
     virtual void slotFileProperties();
-    virtual bool openUrl(const KUrl&);
+    virtual bool openUrl(const KUrl &);
     virtual void slotSshAdd();
     virtual void showDbStatus();
 
@@ -82,7 +78,7 @@ protected:
      */
     virtual bool openFile();
     virtual void setupActions();
-    KAboutApplicationDialog* m_aboutDlg;
+    KAboutApplicationDialog *m_aboutDlg;
 
     void init(QWidget *parentWidget, bool full);
 
@@ -90,17 +86,17 @@ protected slots:
     virtual void slotLogFollowNodes(bool);
     virtual void slotDisplayIgnored(bool);
     virtual void slotDisplayUnkown(bool);
-    virtual void slotUrlChanged(const QString&);
+    virtual void slotUrlChanged(const QString &);
     void showAboutApplication();
     void appHelpActivated();
     virtual void slotShowSettings();
 
 private:
     kdesvnView *m_view;
-    KdesvnBrowserExtension*m_browserExt;
+    KdesvnBrowserExtension *m_browserExt;
 
 protected slots:
-    void slotSettingsChanged(const QString&);
+    void slotSettingsChanged(const QString &);
 
 protected slots:
     virtual void slotHideUnchanged(bool);
@@ -110,11 +106,11 @@ protected slots:
 class commandline_part;
 class KCmdLineArgs;
 
-class KPARTS_EXPORT KdesvnBrowserExtension : public KParts::BrowserExtension
+class KdesvnBrowserExtension : public KParts::BrowserExtension
 {
     Q_OBJECT
 public:
-    KdesvnBrowserExtension(kdesvnpart*);
+    explicit KdesvnBrowserExtension(kdesvnpart *);
     virtual ~KdesvnBrowserExtension();
 
 public slots:

@@ -21,23 +21,32 @@
 #define HELPERSSUB2QT_H
 
 #include "src/svnqt/datetime.h"
-#include <qdatetime.h>
-#include <qstring.h>
+#include "src/svnqt/targets.h"
 #include <svn_time.h>
 
-namespace helpers {
+#include <QDateTime>
+#include <QString>
+#include <KUrl>
+
+namespace helpers
+{
 
 /**
 @author Rajko Albrecht
 */
-class sub2qt{
-public:
-    sub2qt();
-    ~sub2qt();
-
-    static QString apr_time2qtString(apr_time_t _time);
-    static QString DateTime2qtString(const svn::DateTime&_time);
-};
+namespace sub2qt
+{
+QString apr_time2qtString(apr_time_t _time);
+QString DateTime2qtString(const svn::DateTime &_time);
+/**
+  * Convert a QStringList into a QVector<Path>
+  */
+svn::Targets fromStringList(const QStringList &paths);
+/**
+  * Convert a KUrl::List into a QVector<Path>
+  */
+svn::Targets fromUrlList(const KUrl::List &urls);
+}
 
 }
 #endif

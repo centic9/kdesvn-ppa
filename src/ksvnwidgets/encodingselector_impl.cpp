@@ -28,25 +28,13 @@ EncodingSelector_impl::EncodingSelector_impl(QWidget *parent)
     : QWidget(parent)
 {
     setupUi(this);
-    m_encodingList->addItems( KGlobal::charsets()->availableEncodingNames());
+    m_encodingList->addItems(KGlobal::charsets()->availableEncodingNames());
 }
 
-EncodingSelector_impl::EncodingSelector_impl(const QString&cur,QWidget *parent, const char *name)
-    : QWidget(parent)
+void EncodingSelector_impl::setCurrentEncoding(const QString &cur)
 {
-    setupUi(this);
-    if (name) {
-        setObjectName(name);
-    }
-
-    m_encodingList->addItems( KGlobal::charsets()->availableEncodingNames());
-    setCurrentEncoding(cur);
-}
-
-void EncodingSelector_impl::setCurrentEncoding(const QString&cur)
-{
-    for (int j = 1;j<m_encodingList->count();++j ) {
-        if(m_encodingList->itemText(j)==cur) {
+    for (int j = 1; j < m_encodingList->count(); ++j) {
+        if (m_encodingList->itemText(j) == cur) {
             m_encodingList->setCurrentIndex(j);
             break;
         }
@@ -56,11 +44,8 @@ void EncodingSelector_impl::setCurrentEncoding(const QString&cur)
 void EncodingSelector_impl::itemActivated(int which)
 {
     if (which == 0) {
-        emit TextCodecChanged(QString(""));
+        emit TextCodecChanged(QString());
     } else {
         emit TextCodecChanged(m_encodingList->currentText());
     }
 }
-
-#include "encodingselector_impl.moc"
-

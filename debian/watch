@@ -1,2 +1,2 @@
 version=3
-http://kdesvn.alwins-world.de/wiki/DownLoads .*kdesvn-(.*)\.tar\.bz2
+http://download.kde.org/stable/kdesvn/([\d.]+)/kdesvn-([\d.]+).tar.xz

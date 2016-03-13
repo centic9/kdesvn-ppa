@@ -17,30 +17,31 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-
 #ifndef REPOSNOTIFY_H
 #define REPOSNOTIFY_H
 
-#include "svnqt/svnqt_defines.h"
+#include <svnqt/svnqt_defines.h>
 
-#include <qstring.h>
+#include <QString>
 
 struct svn_repos_notify_t;
 
-namespace svn {
-namespace repository {
-    class ReposNotifyData;
+namespace svn
+{
+namespace repository
+{
+class ReposNotifyData;
 
-    class SVNQT_EXPORT ReposNotify
-    {
-        ReposNotifyData*m_data;
+class SVNQT_EXPORT ReposNotify
+{
+    ReposNotifyData *m_data;
 
-    public:
-        ReposNotify(const svn_repos_notify_t*notify);
-        virtual ~ReposNotify();
-        
-        operator const QString&()const;
-    };
+public:
+    explicit ReposNotify(const svn_repos_notify_t *notify);
+    ~ReposNotify();
+
+    operator const QString &()const;
+};
 }
 }
 #endif // REPOSNOTIFY_H

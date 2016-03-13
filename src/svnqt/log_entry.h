@@ -6,6 +6,7 @@
 /*
  * ====================================================================
  * Copyright (c) 2002-2005 The RapidSvn Group.  All rights reserved.
+ * dev@rapidsvn.tigris.org
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -31,42 +32,42 @@
 #ifndef SVNQT_LOG_ENTRY_H
 #define SVNQT_LOG_ENTRY_H
 
-#include "svnqt/svnqt_defines.h"
-#include "svnqt/datetime.h"
+#include <svnqt/svnqt_defines.h>
+#include <svnqt/datetime.h>
 
 #include <QString>
-#include <QList>
+#include <QVector>
 
 // apr
-#include "apr_time.h"
+#include <apr_time.h>
 
 // subversion api
-#include "svn_types.h"
-#include "svn_version.h"
+#include <svn_types.h>
+#include <svn_version.h>
 
 namespace svn
 {
 
-  class StringArray;
-  class SVNQT_EXPORT LogChangePathEntry
-  {
-  public:
-    LogChangePathEntry (const char *path_,
-                        char action_,
-                        const char *copyFromPath_,
-                        const svn_revnum_t copyFromRevision_);
+class StringArray;
+class SVNQT_EXPORT LogChangePathEntry
+{
+public:
+    LogChangePathEntry(const char *path_,
+                       char action_,
+                       const char *copyFromPath_,
+                       const svn_revnum_t copyFromRevision_);
 
-    LogChangePathEntry (const QString &path_,
-                        char action_,
-                        const QString &copyFromPath_,
-                        const svn_revnum_t copyFromRevision_);
+    LogChangePathEntry(const QString &path_,
+                       char action_,
+                       const QString &copyFromPath_,
+                       const svn_revnum_t copyFromRevision_);
 
-    LogChangePathEntry (const QString &path_,
-                        char action_,
-                        const QString &copyFromPath_,
-                        const svn_revnum_t copyFromRevision_,
-                        const QString &copyToPath_,
-                        const svn_revnum_t copyToRevision_);
+    LogChangePathEntry(const QString &path_,
+                       char action_,
+                       const QString &copyFromPath_,
+                       const svn_revnum_t copyFromRevision_,
+                       const QString &copyToPath_,
+                       const svn_revnum_t copyToRevision_);
 
     LogChangePathEntry();
 
@@ -76,42 +77,42 @@ namespace svn
     //! future use or useful in backends
     QString copyToPath;
 
-    QLONG copyFromRevision;
+    qlonglong copyFromRevision;
     //! future use or useful in backends
-    QLONG copyToRevision;
-  };
+    qlonglong copyToRevision;
+};
 
-  typedef QList<LogChangePathEntry> LogChangePathEntries;
+typedef QVector<LogChangePathEntry> LogChangePathEntries;
 
-  class SVNQT_EXPORT LogEntry
-  {
-  public:
-    LogEntry ();
+class SVNQT_EXPORT LogEntry
+{
+public:
+    LogEntry();
 
-    LogEntry (const svn_revnum_t revision,
-              const char * author,
-              const char * date,
-              const char * message);
+    LogEntry(const svn_revnum_t revision,
+             const char *author,
+             const char *date,
+             const char *message);
 #if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 5)) || (SVN_VER_MAJOR > 1)
-    LogEntry(svn_log_entry_t*,const StringArray&excludeList);
+    LogEntry(svn_log_entry_t *, const StringArray &excludeList);
 #endif
-    void setDate(const char*date);
+    void setDate(const char *date);
 
     //! if -1 the entry is a fake entry and not real usable!
-    QLONG revision;
-    QLONG date;
+    qlonglong revision;
+    qlonglong date;
     QString author;
     QString message;
     LogChangePathEntries changedPaths;
-    QLIST<QLONG> m_MergedInRevisions;
-  };
+    QList<qlonglong> m_MergedInRevisions;
+};
 }
 
-SVNQT_EXPORT QDataStream &operator<<(QDataStream&s,const svn::LogEntry&r);
-SVNQT_EXPORT QDataStream &operator<<(QDataStream&s,const svn::LogChangePathEntry&r);
+SVNQT_EXPORT QDataStream &operator<<(QDataStream &s, const svn::LogEntry &r);
+SVNQT_EXPORT QDataStream &operator<<(QDataStream &s, const svn::LogChangePathEntry &r);
 
-SVNQT_EXPORT QDataStream &operator>>(QDataStream&s,svn::LogEntry&r);
-SVNQT_EXPORT QDataStream &operator>>(QDataStream&s,svn::LogChangePathEntry&r);
+SVNQT_EXPORT QDataStream &operator>>(QDataStream &s, svn::LogEntry &r);
+SVNQT_EXPORT QDataStream &operator>>(QDataStream &s, svn::LogChangePathEntry &r);
 
 #endif
 /* -----------------------------------------------------------------

@@ -19,28 +19,21 @@
  ***************************************************************************/
 
 #include "modifiedthread.h"
-#include "tcontextlistener.h"
-#include "src/kdesvn_events.h"
 
 #include "src/svnqt/svnqttypes.h"
 #include "src/svnqt/client_parameter.h"
 
-#include <qobject.h>
-#include <kdebug.h>
-#include <kapplication.h>
-
-CheckModifiedThread::CheckModifiedThread(QObject*_parent,const QString&what,bool _updates)
-    : SvnThread(_parent),mutex()
-{
-    m_what = what;
-    m_updates = _updates;
-}
+// CheckModifiedThread
+CheckModifiedThread::CheckModifiedThread(QObject *parent, const QString &what, bool updates)
+    : SvnThread(parent)
+    , m_what(what)
+    , m_updates(updates)
+{}
 
 CheckModifiedThread::~CheckModifiedThread()
-{
-}
+{}
 
-const svn::StatusEntries&CheckModifiedThread::getList()const
+const svn::StatusEntries &CheckModifiedThread::getList()const
 {
     return m_Cache;
 }
@@ -48,17 +41,11 @@ const svn::StatusEntries&CheckModifiedThread::getList()const
 void CheckModifiedThread::run()
 {
     // what must be cleaned!
-    QString ex;
     svn::StatusParameter params(m_what);
     try {
         m_Cache = m_Svnclient->status(params.depth(svn::DepthInfinity).all(false).update(m_updates).noIgnore(false).revision(svn::Revision::HEAD));
-    } catch (const svn::Exception&e) {
+    } catch (const svn::Exception &e) {
         m_SvnContextListener->contextNotify(e.msg());
     }
-    KApplication*k = KApplication::kApplication();
-    if (k) {
-        DataEvent*ev = new DataEvent(m_updates?EVENT_UPDATE_CACHE_FINISHED:EVENT_CACHE_THREAD_FINISHED);
-        ev->setData((void*)this);
-        k->postEvent(m_Parent,ev);
-    }
+    emit checkModifiedFinished();
 }

@@ -1,3 +1,57 @@
+kdesvn (1.7.0-2) unstable; urgency=medium
+
+  * Update Homepage: field.
+  * Drop kdesvn-dbg package now that we have automatic dbgsym packages.
+  * Drop dh_makeshlibs override, no longer necessary now that libsvnqt is
+    gone.
+
+ -- Michael Biebl <biebl@debian.org>  Sun, 13 Mar 2016 18:12:21 +0100
+
+kdesvn (1.7.0-1) unstable; urgency=medium
+
+  * Team upload.
+  * New upstream release:
+    - the KIO slaves should respect all the attributes specified
+      (Closes: #431839, #729417)
+    - fixes crash when getting logs (Closes: #753984)
+    - the build system does not provide a buggy "uninstall" target anymore
+      (Closes: #800098)
+  * Update watch file to the new location.
+  * Remove extra libsoprano-dev build dependency, which was added as workaround
+    for a bug in kdelibs5-dev.
+  * Fix "konqueror" typo in descriptions. (Closes: #613994)
+  * Enable parallel build.
+  * Disable the test suite: one of the test fails, and a different one requires
+    network access. The status of the test suite will be re-evaluated later.
+  * kdesvn uses QtSql+QSLITE as database, so drop the libsqlite3-dev build
+    dependency, and add libqt4-sql-sqlite as dependency for kdesvn.
+  * There is no more public libsvnqt shared library, so drop the libsvnqt7 and
+    libsvnqt-dev packages.
+  * Update install files.
+  * Bump the debhelper compatibility to 9:
+    - bump compat to 9
+    - bump the debhelper build dependency to >= 9
+  * Update Vcs-* fields.
+  * Fix enabling the kde dh addon: use "--with kde" instead of "--with-kde",
+    which also avoids the current dh_compress override (since this is what the
+    kde addon does).
+  * Bump Standards-Version to 3.9.7, no changes required.
+  * Remove duplicated Section fields for the kdesvn and kdesvn-kio-plugins
+    packages.
+  * Bump build dependencies according to the upstream build system:
+    - bump cmake to >= 2.8.12
+    - bump kdelibs5-dev to >= 4:4.9.0
+  * Link in as-needed mode.
+
+ -- Pino Toscano <pino@debian.org>  Sat, 13 Feb 2016 23:20:54 +0100
+
+kdesvn (1.6.0-3) unstable; urgency=medium
+
+  * Team upload.
+  * Add libsoprano-dev build dep.
+
+ -- Maximiliano Curia <maxy@debian.org>  Tue, 01 Sep 2015 15:10:58 +0200
+
 kdesvn (1.6.0-2) unstable; urgency=low
 
   * Upload to unstable.

@@ -33,15 +33,14 @@ class DiffBrowserData
 {
 public:
     DiffBrowserData();
-    virtual ~DiffBrowserData();
+    ~DiffBrowserData();
 
 //     enum {NONE, FORWARD, BACKWARD};
 
-    DiffSyntax*m_Syntax;
+    DiffSyntax *m_Syntax;
     QByteArray m_content;
     KFindDialog *srchdialog;
 
-    int last_search,last_finished_search;
     QString pattern;
 };
 

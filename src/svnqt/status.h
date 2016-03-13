@@ -6,6 +6,7 @@
 /*
  * ====================================================================
  * Copyright (c) 2002-2005 The RapidSvn Group.  All rights reserved.
+ * dev@rapidsvn.tigris.org
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -31,35 +32,35 @@
 #define SVNQT_STATUS_H
 
 // subversion api
-#include "svn_wc.h"
+#include <svn_wc.h>
 
 // svncpp
-#include "svnqt/svnqttypes.h"
-#include "svnqt/entry.h"
-#include "svnqt/pool.h"
-#include "svnqt/lock_entry.h"
-#include "svnqt/dirent.h"
-#include "svnqt/info_entry.h"
-#include "svnqt/svnqt_defines.h"
+#include <svnqt/svnqttypes.h>
+#include <svnqt/entry.h>
+#include <svnqt/pool.h>
+#include <svnqt/lock_entry.h>
+#include <svnqt/dirent.h>
+#include <svnqt/info_entry.h>
+#include <svnqt/svnqt_defines.h>
 
 namespace svn
 {
-  /**
-   * Subversion status API. This class wraps around
-   * @a svn_wc_status_t.
-   *
-   * @see svn_wc.h
-   * @see svn_wc_status_t
-   */
-  class Status_private;
+/**
+ * Subversion status API. This class wraps around
+ * @a svn_wc_status_t.
+ *
+ * @see svn_wc.h
+ * @see svn_wc_status_t
+ */
+class Status_private;
 
-  class SVNQT_EXPORT Status
-  {
-  public:
+class SVNQT_EXPORT Status
+{
+public:
     /**
      * copy constructor
      */
-    Status (const Status & src);
+    Status(const Status &src);
 
     /**
      * default constructor
@@ -67,57 +68,57 @@ namespace svn
      * @param path path for this status entry
      * @param status status entry
      */
-    explicit Status (const QString&path=QString(), svn_wc_status2_t * status = NULL);
+    explicit Status(const QString &path = QString(), svn_wc_status2_t *status = NULL);
     /**
      * default constructor
      *
      * @param path path for this status entry
      * @param status status entry
      */
-    explicit Status (const char*path, svn_wc_status2_t * status = NULL);
+    explicit Status(const char *path, svn_wc_status2_t *status = NULL);
     /**
      * converting constructor
      */
-    Status(const QString&path,const DirEntryPtr&src);
+    Status(const QString &path, const DirEntry &src);
     /**
      * converting constructor
      */
-    Status(const QString&path,const InfoEntry&src);
+    Status(const QString &path, const InfoEntry &src);
 
     /**
      * destructor
      */
-    virtual ~Status ();
+    virtual ~Status();
 
     /**
      * @return path of status entry
      */
-    const QString&
-    path () const;
+    const QString &
+    path() const;
 
     /**
      * @return entry for this path
      * @retval entry.isValid () = false item is not versioned
      */
-    const Entry&
-    entry () const;
+    const Entry &
+    entry() const;
     /**
      * @return file status property enum of the "textual" component.
      */
     svn_wc_status_kind
-    textStatus () const;
+    textStatus() const;
 
     /**
      * @return file status property enum of the "property" component.
      */
     svn_wc_status_kind
-    propStatus () const;
+    propStatus() const;
 
     /**
      * @retval TRUE if under version control
      */
     bool
-    isVersioned () const;
+    isVersioned() const;
 
     /**
      * @retval TRUE if under version control and not ignored
@@ -135,32 +136,32 @@ namespace svn
      * @retval TRUE if locked
      */
     bool
-    isLocked () const;
+    isLocked() const;
 
     /**
      * @retval TRUE if copied
      */
     bool
-    isCopied () const;
+    isCopied() const;
 
     /**
      * @retval TRUE if switched
      */
     bool
-    isSwitched () const;
+    isSwitched() const;
     /**
      * @return the entry's text status in the repository
      */
     svn_wc_status_kind
-    reposTextStatus () const;
+    reposTextStatus() const;
     /**
      * @return the entry's prop status in the repository
      */
     svn_wc_status_kind
-    reposPropStatus () const;
+    reposPropStatus() const;
 
-    const LockEntry&
-    lockEntry () const;
+    const LockEntry &
+    lockEntry() const;
 
     bool
     validReposStatus()const;
@@ -168,15 +169,14 @@ namespace svn
     bool
     validLocalStatus()const;
 
-
     /**
      * assignment operator
      */
     Status &
     operator = (const Status &);
-  private:
-    Status_private*m_Data;
-  };
+private:
+    Status_private *m_Data;
+};
 }
 
 #endif
