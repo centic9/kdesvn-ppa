@@ -27,23 +27,21 @@
 #include <kapplication.h>
 #include <klocale.h>
 
-// #include <qvbox.h>
 #include <KVBox>
+#include <QPointer>
 
-RevisionButtonImpl::RevisionButtonImpl(QWidget *parent, const char *name)
-//     :RevisionButton(parent, name),
+RevisionButtonImpl::RevisionButtonImpl(QWidget *parent)
     : QWidget(parent),
-    m_Rev(svn::Revision::UNDEFINED),m_noWorking(false)
+      m_Rev(svn::Revision::UNDEFINED), m_noWorking(false)
 {
     setupUi(this);
-    setObjectName(name);
 }
 
 RevisionButtonImpl::~RevisionButtonImpl()
 {
 }
 
-void RevisionButtonImpl::setRevision(const svn::Revision&aRev)
+void RevisionButtonImpl::setRevision(const svn::Revision &aRev)
 {
     m_Rev = aRev;
     m_RevisionButton->setText(m_Rev.toString());
@@ -52,38 +50,31 @@ void RevisionButtonImpl::setRevision(const svn::Revision&aRev)
 
 void RevisionButtonImpl::askRevision()
 {
-    Rangeinput_impl*rdlg;
-//     int buttons = KDialog::Ok|KDialog::Cancel;
-
-//     KDialogBase * dlg = new KDialogBase(KApplication::activeModalWidget(),"Revinput",
-//                                          true,i18n("Select revision"),buttons);
-    KDialog * dlg = new KDialog(KApplication::activeModalWidget());
+    Rangeinput_impl *rdlg;
+    QPointer<KDialog> dlg(new KDialog());
     dlg->setCaption(i18n("Select revision"));
-    dlg->setModal(true);
-    dlg->setButtons(KDialog::Ok|KDialog::Cancel);
-    dlg->showButtonSeparator( false );
+    dlg->setButtons(KDialog::Ok | KDialog::Cancel);
+    dlg->showButtonSeparator(false);
 
-    if (!dlg) {
-        return;
-    }
-//     QWidget* Dialog1Layout = dlg->makeVBoxMainWidget();
     KVBox *Dialog1Layout = new KVBox(dlg);
     dlg->setMainWidget(Dialog1Layout);
 
     rdlg = new Rangeinput_impl(Dialog1Layout);
     rdlg->setStartOnly(true);
     rdlg->setNoWorking(m_noWorking);
-// KDE4 port    dlg->resize(dlg->configDialogSize(*(Kdesvnsettings::self()->config()),"log_revisions_dlg"));
-    if (dlg->exec()==QDialog::Accepted) {
+
+    KConfigGroup _k(Kdesvnsettings::self()->config(), "log_revisions_dlg");
+    dlg->restoreDialogSize(_k);
+    if (dlg->exec() == QDialog::Accepted) {
         setRevision(rdlg->getRange().first);
     }
-// KDE4 port    dlg->saveDialogSize(*(Kdesvnsettings::self()->config()),"log_revisions_dlg",false);
-    delete dlg;
+    if (dlg) {
+        dlg->saveDialogSize(_k);
+        delete dlg;
+    }
 }
 
 void RevisionButtonImpl::setNoWorking(bool how)
 {
     m_noWorking = how;
 }
-
-#include "revisionbuttonimpl.moc"

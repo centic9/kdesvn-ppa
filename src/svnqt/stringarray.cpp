@@ -22,8 +22,8 @@
  * history and logs, available at http://kdesvn.alwins-world.de.           *
  ***************************************************************************/
 
-#include "svnqt/stringarray.h"
-#include "svnqt/pool.h"
+#include "stringarray.h"
+#include "pool.h"
 
 #include <svn_types.h>
 // apr api
@@ -33,38 +33,35 @@
 /*!
     \fn svn::StringArray::StringArray()
  */
- svn::StringArray::StringArray()
-    :m_content()
+svn::StringArray::StringArray()
+    : m_content()
 {
     setNull(true);
 }
 
-
 /*!
     \fn svn::StringArray::StringArray(const QStringList&)
  */
-svn::StringArray::StringArray(const QStringList&aList)
-    :m_content(aList)
+svn::StringArray::StringArray(const QStringList &aList)
+    : m_content(aList)
 {
-    setNull(false);
+    setNull(m_content.isEmpty());
 }
 
 /*!
     \fn svn::StringArray::StringArray(const apr_array_header_t * apr_targets)
  */
-svn::StringArray::StringArray(const apr_array_header_t * apr_targets)
-    :m_content()
+svn::StringArray::StringArray(const apr_array_header_t *apr_targets)
+    : m_content()
 {
-    int i;
-    for (i = 0; i < apr_targets->nelts; i++)
-    {
-        const char ** target =
-                &APR_ARRAY_IDX (apr_targets, i, const char *);
+    for (int i = 0; i < apr_targets->nelts; i++) {
+        const char **target =
+            &APR_ARRAY_IDX(apr_targets, i, const char *);
 
-        m_content.push_back (QString::FROMUTF8(*target));
+        m_content.push_back(QString::fromUtf8(*target));
     }
+    setNull(m_content.isEmpty());
 }
-
 
 /*!
     \fn svn::StringArray::size()const
@@ -74,41 +71,38 @@ QStringList::size_type svn::StringArray::size()const
     if (isNull()) {
         return 0;
     }
-    return m_content.size ();
+    return m_content.size();
 }
 
-
-const QString& svn::StringArray::operator[](QStringList::size_type which)const
+const QString &svn::StringArray::operator[](QStringList::size_type which)const
 {
     return m_content[which];
 }
 
-QString& svn::StringArray::operator[](QStringList::size_type which)
+QString &svn::StringArray::operator[](QStringList::size_type which)
 {
     return m_content[which];
 }
-
 
 /*!
     \fn svn::StringArray::array (const Pool & pool) const
  */
-apr_array_header_t * svn::StringArray::array (const Pool & pool) const
+apr_array_header_t *svn::StringArray::array(const Pool &pool) const
 {
     if (isNull()) {
         return 0;
     }
     QStringList::const_iterator it;
 
-    apr_pool_t *apr_pool = pool.pool ();
+    apr_pool_t *apr_pool = pool.pool();
     apr_array_header_t *apr_targets =
-            apr_array_make (apr_pool,m_content.size(),sizeof (const char *));
+        apr_array_make(apr_pool, m_content.size(), sizeof(const char *));
 
-    for (it = m_content.begin (); it != m_content.end (); ++it)
-    {
-        QByteArray s = (*it).TOUTF8();
-        char * t2 = apr_pstrndup (apr_pool,s,s.size());
+    for (it = m_content.begin(); it != m_content.end(); ++it) {
+        QByteArray s = (*it).toUtf8();
+        char *t2 = apr_pstrndup(apr_pool, s, s.size());
 
-        (*((const char **) apr_array_push (apr_targets))) = t2;
+        (*((const char **) apr_array_push(apr_targets))) = t2;
     }
     return apr_targets;
 }

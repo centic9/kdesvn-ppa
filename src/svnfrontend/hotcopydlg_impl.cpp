@@ -19,16 +19,14 @@
  ***************************************************************************/
 #include "hotcopydlg_impl.h"
 
-#include <qcheckbox.h>
 #include <kurl.h>
-#include <kurlrequester.h>
 
 HotcopyDlg_impl::HotcopyDlg_impl(QWidget *parent)
-    :QWidget(parent),Ui::HotcopyDlg()
+    : QWidget(parent), Ui::HotcopyDlg()
 {
     setupUi(this);
-    m_SrcpathEditor->setMode(KFile::Directory|KFile::LocalOnly);
-    m_DestpathEditor->setMode(KFile::Directory|KFile::LocalOnly);
+    m_SrcpathEditor->setMode(KFile::Directory | KFile::LocalOnly);
+    m_DestpathEditor->setMode(KFile::Directory | KFile::LocalOnly);
 }
 
 HotcopyDlg_impl::~HotcopyDlg_impl()
@@ -37,27 +35,15 @@ HotcopyDlg_impl::~HotcopyDlg_impl()
 
 QString HotcopyDlg_impl::srcPath()const
 {
-    return checkPath(m_SrcpathEditor->url().prettyUrl());
+    return m_SrcpathEditor->url().path(KUrl::RemoveTrailingSlash);
 }
 
 QString HotcopyDlg_impl::destPath()const
 {
-    return checkPath(m_DestpathEditor->url().prettyUrl());
+    return m_DestpathEditor->url().path(KUrl::RemoveTrailingSlash);
 }
 
 bool HotcopyDlg_impl::cleanLogs()const
 {
     return m_Cleanlogs->isChecked();
 }
-
-QString HotcopyDlg_impl::checkPath(const QString&_p)const
-{
-    KUrl u = _p;
-    QString res = u.path();
-    while (res.endsWith('/')) {
-        res.truncate(res.length()-1);
-    }
-    return res;
-}
-
-#include "hotcopydlg_impl.moc"

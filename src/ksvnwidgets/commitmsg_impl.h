@@ -24,22 +24,20 @@
 #include "src/ksvnwidgets/models/commitmodelfwd.h"
 #include "src/svnqt/commititem.h"
 
-#include <QList>
-#include <QPair>
 
 class QStringList;
 class CommitModel;
-class QSortFilterProxyModel;
+class CommitFilterModel;
 
-class Commitmsg_impl: public QWidget, Ui::CommitMessage {
-  Q_OBJECT
+class Commitmsg_impl: public QWidget, Ui::CommitMessage
+{
+    Q_OBJECT
 
 protected:
-    Commitmsg_impl(const svn::CommitItemList&_items,QWidget *parent=0);
-    Commitmsg_impl(const QMap<QString,QString>&_items,QWidget *parent=0);
-    Commitmsg_impl(const CommitActionEntries&,const CommitActionEntries&,QWidget *parent = 0);
+    explicit Commitmsg_impl(const svn::CommitItemList &_items, QWidget *parent = 0);
+    explicit Commitmsg_impl(const CommitActionEntries &, const CommitActionEntries &, QWidget *parent = 0);
 public:
-    Commitmsg_impl(QWidget *parent = 0);
+    explicit Commitmsg_impl(QWidget *parent = 0);
     virtual ~Commitmsg_impl();
 
     QString getMessage()const;
@@ -48,35 +46,36 @@ public:
     void saveHistory(bool canceld);
     void keepsLocks(bool);
 
-    static QString getLogmessage(bool*ok,svn::Depth*rec,bool*keeps_locks,QWidget*parent=0);
-    static QString getLogmessage(const svn::CommitItemList&,bool*ok,svn::Depth*rec,bool*keep_locks,QWidget*parent=0);
-    static QString getLogmessage(const QMap<QString,QString>&,bool*ok,svn::Depth*rec,bool*keep_locks,QWidget*parent=0);
+    static QString getLogmessage(bool *ok, svn::Depth *rec, bool *keeps_locks, QWidget *parent = 0);
+    static QString getLogmessage(const svn::CommitItemList &, bool *ok, svn::Depth *rec, bool *keep_locks, QWidget *parent = 0);
 
-    static QString getLogmessage(const CommitActionEntries&,const CommitActionEntries&,
-            QObject*callback,
-            CommitActionEntries&,
-            bool*ok,bool*keep_locks,QWidget*parent=0);
+    static QString getLogmessage(const CommitActionEntries &, const CommitActionEntries &,
+                                 QObject *callback,
+                                 CommitActionEntries &,
+                                 bool *ok, bool *keep_locks, QWidget *parent = 0);
 
-    void addItemWidget(QWidget*);
+    void addItemWidget(QWidget *);
 
     svn::Depth getDepth()const;
 
     CommitActionEntries checkedEntries();
     void hideDepth(bool ahide);
 
-    CommitModelNodePtr currentCommitItem(int column=0);
+    CommitModelNodePtr currentCommitItem(int column = 0);
 
 protected Q_SLOTS:
-    virtual void slotHistoryActivated(int);
-    virtual void slotUnmarkUnversioned();
-    virtual void slotDiffSelected();
-    virtual void slotRevertSelected();
-    virtual void slotMarkUnversioned();
-    virtual void hideNewItems(bool);
-    virtual void insertFile();
-    virtual void slotItemReverted(const QStringList&);
-    virtual void slotItemDoubleClicked(const QModelIndex&);
-    virtual void slotSelectAll();
+    void slotHistoryActivated(int);
+    void slotUnmarkUnversioned();
+    void slotDiffSelected();
+    void slotRevertSelected();
+    void slotMarkUnversioned();
+    void hideNewItems(bool hide);
+    void insertFile();
+    void slotItemReverted(const QStringList &);
+    void slotItemDoubleClicked(const QModelIndex &index);
+    void slotCurrentItemChanged(const QModelIndex &current);
+    void slotSelectAll();
+    void slotUnselectAll();
 
 protected:
     static QStringList sLogHistory;
@@ -89,15 +88,15 @@ protected:
     void markUnversioned(bool mark);
     void checkSplitterSize();
     void setupModel();
-    virtual void insertFile(const QString&);
+    virtual void insertFile(const QString &);
     virtual void hideKeepsLock(bool);
 
-    CommitModel*m_CurrentModel;
-    QSortFilterProxyModel*m_SortModel;
+    CommitModel *m_CurrentModel;
+    CommitFilterModel *m_SortModel;
 
 Q_SIGNALS:
-    void makeDiff(const QString&,const svn::Revision&,const QString&,const svn::Revision&,QWidget*);
-    void sigRevertItem(const QStringList&,bool);
+    void makeDiff(const QString &, const svn::Revision &, const QString &, const svn::Revision &, QWidget *);
+    void sigRevertItem(const QStringList &, bool);
 };
 
 #endif

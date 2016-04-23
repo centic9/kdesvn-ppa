@@ -18,5 +18,7 @@
  #   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.         #
  ####
 
-FILE(GLOB _LANGFILES *.ts)
-LRELEASE_TRANSLATION(${QT_LRELEASE_EXECUTABLE} ${_LANGFILES})
+file(GLOB _LANGFILES *.ts)
+qt4_add_translation(_qm_files ${_LANGFILES})
+add_custom_target(svnqt-translations ALL DEPENDS ${_qm_files})
+install(FILES ${_qm_files} DESTINATION share/svnqt/i18n)

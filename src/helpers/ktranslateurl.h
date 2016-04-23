@@ -22,21 +22,18 @@
 
 #include <kurl.h>
 
-namespace helpers {
+namespace helpers
+{
 
 /**
-	@author Rajko Albrecht <ral@alwins-world.de>
+    @author Rajko Albrecht <ral@alwins-world.de>
 */
-class KTranslateUrl{
-public:
-    KTranslateUrl();
-    ~KTranslateUrl();
-
-    static KUrl translateSystemUrl(const KUrl&);
-    static bool parseURL(const KUrl&,QString&name,QString&path);
-    static KUrl findSystemBase(const QString&name);
-    static QString makeKdeUrl(const QString&inUrl);
-};
+namespace KTranslateUrl
+{
+KUrl translateSystemUrl(const KUrl &_url);
+QString makeKdeUrl(const QString &inUrl);
+KUrl string2Uri(const QString &what);
+}
 
 }
 

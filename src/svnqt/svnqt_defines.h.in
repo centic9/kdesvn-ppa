@@ -21,25 +21,16 @@
 #ifndef _SVNQT_DEFINES_H
 #define _SVNQT_DEFINES_H
 
-/* defines if we setup against a compiler with working "-fvisibility=hidden" */
-#define SVNQT_EXPORT @_SVNQT_EXPORT@
-#define SVNQT_NOEXPORT @_SVNQT_NOEXPORT@
+#include <QtCore/qglobal.h>
 
-/* cmake trick: so we make sure that the define in installs
-   is always set as in library used at build time
- */
-#define TOUTF8 @TOUTF8@
-#define FROMUTF8 @FROMUTF8@
-#define QLIST @QLIST@
-#define TOASCII @TOASCII@
-#define HOMEDIR @HOMEDIR@
-#define QLONG @QLONG@
+#ifdef svnqt_EXPORTS
+  #define SVNQT_EXPORT Q_DECL_EXPORT
+#else
+  #define SVNQT_EXPORT Q_DECL_IMPORT
+#endif
+#define SVNQT_NOEXPORT Q_DECL_HIDDEN
 
-#define SVNQT_SIZE_UNKNOWN QLONG(-1)
+#cmakedefine HAS_BACKTRACE_H 1
+#cmakedefine USE_BACKTRACE 1
 
-#define HAS_SVN_VERSION_H @HAS_SVN_VERSION_H@
-
-/* the difference between qt3 and qt4 is too much... :( */
-class QSqlDatabase;
-typedef @QDATABASE@ QDataBase;
 #endif

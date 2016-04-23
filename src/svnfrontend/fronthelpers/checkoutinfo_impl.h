@@ -25,32 +25,33 @@
 #include "src/svnqt/svnqttypes.h"
 #include "kurl.h"
 
-class CheckoutInfo_impl: public QWidget, public Ui::CheckoutInfo {
-Q_OBJECT
+class CheckoutInfo_impl: public QWidget, public Ui::CheckoutInfo
+{
+    Q_OBJECT
 public:
-    CheckoutInfo_impl(QWidget *parent = 0, const char *name = 0);
+    explicit CheckoutInfo_impl(QWidget *parent = 0);
     virtual ~CheckoutInfo_impl();
 
-    svn::Revision toRevision();
-    QString reposURL();
-    QString targetDir();
+    svn::Revision toRevision() const;
+    QString reposURL() const;
+    QString targetDir() const;
 
-    bool overwrite();
-    svn::Depth getDepth();
-    void setStartUrl(const QString&);
+    bool overwrite() const;
+    svn::Depth getDepth() const;
+    void setStartUrl(const QString &);
 
     void disableForce(bool how);
     void disableTargetDir(bool how);
     void disableAppend(bool how);
     void disableOpen(bool how);
     void disableExternals(bool how);
-    bool openAfterJob();
-    virtual void disableRange(bool how);
-    void setTargetUrl(const QString&);
-    bool ignoreExternals();
-    void hideDepth(bool hide,bool overwriteAsRecurse);
+    bool openAfterJob() const;
+    void disableRange(bool how);
+    void setTargetUrl(const QString &);
+    bool ignoreExternals() const;
+    void hideDepth(bool hide, bool overwriteAsRecurse);
 protected slots:
-    virtual void urlChanged(const QString&);
+    void urlChanged(const QString &);
 };
 
 #endif

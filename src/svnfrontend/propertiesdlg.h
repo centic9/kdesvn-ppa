@@ -26,6 +26,7 @@
 #include <qstring.h>
 #include <QStringList>
 
+#include "src/svnqt/client.h"
 #include "src/svnqt/svnqttypes.h"
 #include "src/svnqt/revision.h"
 
@@ -40,58 +41,54 @@ class KPushButton;
 class FileListViewItem;
 class SvnItem;
 
-namespace svn {
-    class Client;
-}
 
 class PropertiesDlg : public KDialog
 {
     Q_OBJECT
 
 public:
-    PropertiesDlg(SvnItem*, svn::Client*,
-        const svn::Revision&aRev=svn::Revision(svn_opt_revision_working),
-        QWidget* parent = 0, const char* name = 0, bool modal = true);
+    PropertiesDlg(SvnItem *which, const svn::ClientP &aClient,
+                  const svn::Revision &aRev, QWidget *parent = 0);
     ~PropertiesDlg();
 
     bool hasChanged()const;
-    void changedItems(svn::PropertiesMap&toSet,QStringList&toDelete);
+    void changedItems(svn::PropertiesMap &toSet, QStringList &toDelete);
 
 protected:
-    Propertylist* m_PropertiesListview;
-    KPushButton* m_AddButton;
-    KPushButton* m_DeleteButton;
-    KPushButton* m_ModifyButton;
+    Propertylist *m_PropertiesListview;
+    KPushButton *m_AddButton;
+    KPushButton *m_DeleteButton;
+    KPushButton *m_ModifyButton;
 
-    QHBoxLayout* PropertiesDlgLayout;
-    QVBoxLayout* m_rightLayout;
-    QSpacerItem* m_rightSpacer;
+    QHBoxLayout *PropertiesDlgLayout;
+    QVBoxLayout *m_rightLayout;
+    QSpacerItem *m_rightSpacer;
 
     SvnItem *m_Item;
     bool m_changed;
     bool initDone;
-    svn::Client*m_Client;
+    svn::ClientP m_Client;
     svn::Revision m_Rev;
 
 protected slots:
     virtual void languageChange();
 
     virtual void slotHelp();
-    virtual void slotCurrentItemChanged(QTreeWidgetItem*,QTreeWidgetItem*);
-    virtual void slotSelectionExecuted(QTreeWidgetItem*);
+    virtual void slotCurrentItemChanged(QTreeWidgetItem *, QTreeWidgetItem *);
+    virtual void slotSelectionExecuted(QTreeWidgetItem *);
     virtual void slotAdd();
     virtual void slotDelete();
     virtual void slotModify();
 
 protected:
     virtual void initItem();
-    virtual bool event (QEvent * event);
+    virtual bool event(QEvent *event);
 
 public slots:
     int exec();
 
 signals:
-    void clientException(const QString&);
+    void clientException(const QString &);
 };
 
 #endif // PROPERTIESDLG_H

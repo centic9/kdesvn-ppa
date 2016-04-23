@@ -67,7 +67,7 @@
    <item>
     <widget class="QCheckBox" name="m_CreateDirButton" >
      <property name="text" >
-      <string>Append source url name to subfolder</string>
+      <string>Append source URL name to subfolder</string>
      </property>
      <property name="checked" >
       <bool>true</bool>
@@ -79,7 +79,7 @@
      <item>
       <widget class="QCheckBox" name="m_overwriteButton" >
        <property name="toolTip" >
-        <string>May existing unversioned items ovewritten</string>
+        <string>May existing unversioned items overwritten</string>
        </property>
        <property name="text" >
         <string>Overwrite existing</string>

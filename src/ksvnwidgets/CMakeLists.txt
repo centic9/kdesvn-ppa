@@ -18,63 +18,56 @@
  #   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.         #
  ####
 
-INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BINARY_DIR}/src/svnqt)
+include_directories(${CMAKE_BINARY_DIR}/src/svnqt)
 
-KDE_ADD_UI_FILES(
-    kdesvn_shared_ui
-    commitmessage.ui
-    ssltrustprompt.ui
+kde4_add_ui_files(kdesvn_shared_ui
     authdlg.ui
-    encodingselector.ui
-    depthform.ui
-    revertform.ui
+    commitmessage.ui
     deleteform.ui
+    depthform.ui
+    encodingselector.ui
+    revertform.ui
+    ssltrustprompt.ui
 )
 
-SET(ksvnwidgetsrc
-    commitbugtrackervalues.cpp
+set(ksvnwidgetsrc
     authdialogimpl.cpp
     authdialogwidget.cpp
     commitmsg_impl.cpp
-    ssltrustprompt_impl.cpp
-    pwstorage.cpp
+    deleteform_impl.cpp
+    depthselector.cpp
     diffbrowser.cpp
     diffbrowserdata.cpp
     diffsyntax.cpp
     encodingselector_impl.cpp
-    depthselector.cpp
-    revertform_impl.cpp
-    deleteform_impl.cpp
-    models/commitmodelhelper.cpp
     models/commitmodel.cpp
+    models/commitmodelhelper.cpp
+    pwstorage.cpp
+    revertform_impl.cpp
+    ssltrustprompt_impl.cpp
     )
 
-SET(ksvnwidgethdr
-    commitbugtrackervalues.h
+set(ksvnwidgethdr
     authdialogimpl.h
     authdialogwidget.h
     commitmsg_impl.h
-    ssltrustprompt_impl.h
-    pwstorage.h
+    deleteform_impl.h
+    depthselector.h
     diffbrowser.h
     diffbrowserdata.h
     diffsyntax.h
     encodingselector_impl.h
-    depthselector.h
-    revertform_impl.h
-    deleteform_impl.h
-    models/commitmodelhelper.h
     models/commitmodel.h
+    models/commitmodelhelper.h
+    pwstorage.h
+    revertform_impl.h
+    ssltrustprompt_impl.h
 )
 
 qt4_add_dbus_interfaces(ksvnwidgetsrc ${KDE4_DBUS_INTERFACES_DIR}/org.kde.JobViewServer.xml)
 qt4_add_dbus_interfaces(ksvnwidgetsrc ${KDE4_DBUS_INTERFACES_DIR}/org.kde.JobView.xml)
 
-KDE_AUTOMOC(${ksvnwidgetsrc})
-
-ADD_LIBRARY(ksvnwidgets STATIC ${kdesvn_shared_ui} ${ksvnwidgetsrc} ${ksvnwidgethdr})
-SET_TARGET_PROPERTIES(ksvnwidgets
-    PROPERTIES
-    COMPILE_FLAGS ${CMAKE_SHARED_LIBRARY_CXX_FLAGS})
-
-ADD_DEPENDENCIES(ksvnwidgets kdesvncfgreader)
+add_library(ksvnwidgets STATIC ${kdesvn_shared_ui} ${ksvnwidgetsrc} ${ksvnwidgethdr})
+target_link_libraries(ksvnwidgets
+    kdesvncfgreader
+)

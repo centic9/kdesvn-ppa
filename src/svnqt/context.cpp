@@ -6,6 +6,7 @@
 /*
  * ====================================================================
  * Copyright (c) 2002-2005 The RapidSvn Group.  All rights reserved.
+ * dev@rapidsvn.tigris.org
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -28,110 +29,108 @@
  * ====================================================================
  */
 
+#include "context.h"
+
 // Apache Portable Runtime
-#include "apr_xlate.h"
+#include <apr_xlate.h>
 
 // Subversion api
-#include "svn_auth.h"
-#include "svn_config.h"
-#include "svn_subst.h"
-//#include "svn_utf.h"
+#include <svn_auth.h>
+#include <svn_config.h>
+#include <svn_subst.h>
 
 // svncpp
 #include "apr.h"
-#include "context.h"
 #include "context_listener.h"
 #include "contextdata.h"
 
 namespace svn
 {
-  Context::Context (const QString &configDir)
-    : ref_count()
-  {
-    m = new ContextData (configDir);
-  }
+Context::Context(const QString &configDir)
+{
+    m = new ContextData(configDir);
+}
 
-  Context::Context (const Context & src)
-    : ref_count()
-  {
-    m = new ContextData (src.m->configDir());
-    setLogin (src.getUsername (), src.getPassword ());
-  }
+Context::Context(const Context &src)
+{
+    m = new ContextData(src.m->configDir());
+    setLogin(src.getUsername(), src.getPassword());
+}
 
-  Context::~Context ()
-  {
+Context::~Context()
+{
     delete m;
-  }
+}
 
-  void
-  Context::setAuthCache (bool value)
-  {
-    m->setAuthCache (value);
-  }
+void
+Context::setAuthCache(bool value)
+{
+    m->setAuthCache(value);
+}
 
-  void
-  Context::setLogin (const QString& username, const QString& password)
-  {
-    m->setLogin (username, password);
-  }
+void
+Context::setLogin(const QString &username, const QString &password)
+{
+    m->setLogin(username, password);
+}
 
-  Context::operator svn_client_ctx_t * ()const
-  {
+Context::operator svn_client_ctx_t *()const
+{
     return m->ctx();
-  }
+}
 
-  svn_client_ctx_t *
-  Context::ctx ()const
-  {
+svn_client_ctx_t *
+Context::ctx()const
+{
     return m->ctx();
-  }
+}
 
-  void
-  Context::setLogMessage (const QString& msg)
-  {
-    m->setLogMessage (msg);
-  }
+void
+Context::setLogMessage(const QString &msg)
+{
+    m->setLogMessage(msg);
+}
 
-  const QString&
-  Context::getUsername () const
-  {
-    return m->getUsername ();
-  }
+const QString &
+Context::getUsername() const
+{
+    return m->getUsername();
+}
 
-  const QString&
-  Context::getPassword () const
-  {
-    return m->getPassword ();
-  }
+const QString &
+Context::getPassword() const
+{
+    return m->getPassword();
+}
 
-  const QString&
-  Context::getLogMessage () const
-  {
-    return m->getLogMessage ();
-  }
+const QString &
+Context::getLogMessage() const
+{
+    return m->getLogMessage();
+}
 
-  void
-  Context::setListener (ContextListener * listener)
-  {
+void
+Context::setListener(ContextListener *listener)
+{
     m->setListener(listener);
-  }
+}
 
-  ContextListener *
-  Context::getListener () const
-  {
+ContextListener *
+Context::getListener() const
+{
     return m->getListener();
-  }
+}
 
-  void
-  Context::reset ()
-  {
+void
+Context::reset()
+{
     m->reset();
-  }
+}
 
-  bool Context::contextAddListItem(DirEntries*entries, const svn_dirent_t*dirent,const svn_lock_t*lock,const QString&path)
-  {
-    return m->contextAddListItem(entries,dirent,lock,path);
-  }
+bool Context::contextAddListItem(DirEntries *entries, const svn_dirent_t *dirent, const svn_lock_t *lock, const QString &path)
+{
+    return m->contextAddListItem(entries, dirent, lock, path);
+}
 }
 
 /* -----------------------------------------------------------------

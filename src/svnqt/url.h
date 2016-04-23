@@ -6,6 +6,7 @@
 /*
  * ====================================================================
  * Copyright (c) 2002-2005 The RapidSvn Group.  All rights reserved.
+ * dev@rapidsvn.tigris.org
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -31,35 +32,35 @@
 #ifndef SVNQT_URL_H
 #define SVNQT_URL_H
 
-#include "svnqt/svnqt_defines.h"
-#include "svnqt/pool.h"
+#include <svnqt/svnqt_defines.h>
+#include <svnqt/pool.h>
 
 #include <QString>
 #include <QByteArray>
 
 namespace svn
 {
-  class SVNQT_EXPORT Url
-  {
-  private:
-      QByteArray m_Uri;
-      Pool m_Pool;
+class SVNQT_EXPORT Url
+{
+private:
+    QByteArray m_Uri;
+    Pool m_Pool;
 
-  public:
+public:
     /** Constructor */
-    Url ();
-    Url(const QString&);
-    Url(const QByteArray&);
-    Url(const Url&);
-    
+    Url();
+    Url(const QString &);    //krazy:exclude=explicit
+    Url(const QByteArray &); //krazy:exclude=explicit
+    Url(const Url &);
+
     /** Destructor */
-    ~Url ();
+    ~Url();
 
-    void data(const QString&);
-    void data(const QByteArray&);
+    void data(const QString &);
+    void data(const QByteArray &);
 
-    operator const char*()const;
-    operator const QByteArray&()const;
+    operator const char *()const;
+    operator const QByteArray &()const;
 
     /**
      * Checks if @a url is valid
@@ -70,7 +71,7 @@ namespace svn
      *   /home/foo/bar
      */
     static bool
-    isValid (const QString& url);
+    isValid(const QString &url);
 
     /**
      * Checks if @a url points to a local filesystem.
@@ -78,12 +79,12 @@ namespace svn
      * @return true if url is accessed local without network.
      */
     static bool
-    isLocal(const QString& url);
+    isLocal(const QString &url);
 
     static QString
-    transformProtokoll(const QString&);
+    transformProtokoll(const QString &);
 
-  };
+};
 }
 
 #endif

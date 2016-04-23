@@ -17,181 +17,103 @@
  #   Free Software Foundation, Inc.,                                       #
  #   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.         #
  ####
+project(kdesvn)
+set(PACKAGENAME "${CMAKE_PROJECT_NAME}")
+cmake_minimum_required(VERSION 2.8.12)
 
-PROJECT(kdesvn)
-SET(PACKAGENAME "${CMAKE_PROJECT_NAME}")
-IF (CMAKE_MAJOR_VERSION EQUAL 2 AND CMAKE_MINOR_VERSION EQUAL 4)
-    CMAKE_MINIMUM_REQUIRED(VERSION 2.4)
-ELSE (CMAKE_MAJOR_VERSION EQUAL 2 AND CMAKE_MINOR_VERSION EQUAL 4)
-    CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
-ENDIF (CMAKE_MAJOR_VERSION EQUAL 2 AND CMAKE_MINOR_VERSION EQUAL 4)
-SET(BASE_VERSION 1.6.0)
+# Where to look for Findxxx.cmake modules
+set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_SOURCE_DIR}/src/svnqt/cmake)
+# Automatically include the current source and binary dirs
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-OPTION(BUILD_TESTS "Building the tests yes or no (default off)")
-
-SET(TESTINGBUILD OFF CACHE BOOL "Enable/Disable special testing flags")
-IF (TESTINGBUILD)
-    IF (CMAKE_MAJOR_VERSION EQUAL 2 AND CMAKE_MINOR_VERSION EQUAL 4)
-        ADD_DEFINITIONS("-DTESTING_RC=\"\\\"\${CMAKE_SOURCE_DIR}/src/kdesvnui.rc\\\"\" -DTESTING_PARTRC=\"\\\"\${CMAKE_SOURCE_DIR}/src/kdesvn_part.rc\\\"\"")
-        ADD_DEFINITIONS("-DFORCE_ASKPASS=\"\\\"\${CMAKE_BINARY_DIR}/bin/kdesvnaskpass\\\"\"")
-    ELSE (CMAKE_MAJOR_VERSION EQUAL 2 AND CMAKE_MINOR_VERSION EQUAL 4)
-        ADD_DEFINITIONS(-DTESTING_RC=\"${CMAKE_SOURCE_DIR}/src/kdesvnui.rc\" -DTESTING_PARTRC=\"${CMAKE_SOURCE_DIR}/src/kdesvn_part.rc\")
-        ADD_DEFINITIONS(-DFORCE_ASKPASS=\"${CMAKE_BINARY_DIR}/bin/kdesvnaskpass\")
-        ADD_DEFINITIONS(-DEXTRA_KDE_LIBPATH=\"${PROJECT_BINARY_DIR}/lib${LIB_SUFFIX}/kde4\")
-    ENDIF (CMAKE_MAJOR_VERSION EQUAL 2 AND CMAKE_MINOR_VERSION EQUAL 4)
-    ADD_DEFINITIONS(-DDEBUG_TIMER=1)
-ENDIF (TESTINGBUILD)
-
-IF(BUILD_TESTS)
-  ENABLE_TESTING()
-ENDIF(BUILD_TESTS)
-
-SET(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmakemodules ${CMAKE_SOURCE_DIR}/src/svnqt/cmakemodules)
-
-find_package(KDE4 REQUIRED)
+find_package(KDE4 4.9.0 REQUIRED)
 include (KDE4Defaults)
 include (MacroLibrary)
 
-SET(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib${LIB_SUFFIX}/kde4)
+# Set the version
+set(KDESVN_VERSION_MAJOR 1)
+set(KDESVN_VERSION_MINOR 7)
+set(KDESVN_VERSION_PATCH 0)
+set(KDESVN_VERSION_STRING ${KDESVN_VERSION_MAJOR}.${KDESVN_VERSION_MINOR}.${KDESVN_VERSION_PATCH})
 
-MACRO(KDE_AUTOMOC)
- QT4_AUTOMOC(${ARGV})
-ENDMACRO(KDE_AUTOMOC)
+# Append the git revision if available
+# If Git is installed and a '.git' directory is found,
+# we append the Git revision to KDESVN_VERSION_STRING
+if(EXISTS "${kdesvn_SOURCE_DIR}/.git")
+  find_package(Git)
+  if(GIT_FOUND)
+    message(STATUS "Found git: ${GIT_EXECUTABLE}")
+    execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+                    WORKING_DIRECTORY ${kdesvn_SOURCE_DIR}
+                    OUTPUT_VARIABLE kdesvn_git_revision
+                    OUTPUT_STRIP_TRAILING_WHITESPACE)
+    set(KDESVN_VERSION_STRING "${KDESVN_VERSION_STRING} (rev: ${kdesvn_git_revision})")
+  endif()
+endif()
 
-MACRO(KDE_ADD_UI_FILES)
- KDE4_ADD_UI_FILES(${ARGV})
-ENDMACRO(KDE_ADD_UI_FILES)
+option(TESTINGBUILD "Enable/Disable special testing flags" OFF)
+if(TESTINGBUILD)
+    add_definitions(-DTESTING_RC=\"\\\"${CMAKE_SOURCE_DIR}/src/kdesvnui.rc\\\"\" -DTESTING_PARTRC=\"\\\"${CMAKE_SOURCE_DIR}/src/kdesvn_part.rc\\\"\")
+    add_definitions(-DFORCE_ASKPASS=\"\\\"${CMAKE_BINARY_DIR}/bin/kdesvnaskpass\\\"\")
+    add_definitions(-DEXTRA_KDE_LIBPATH=\"\\\"${PROJECT_BINARY_DIR}/lib\\\"\")
+    add_definitions(-DDEBUG_TIMER=1)
+endif()
 
-MACRO(KDE_ADD_KCFG_FILES)
- KDE4_ADD_KCFG_FILES(${ARGV})
-ENDMACRO(KDE_ADD_KCFG_FILES)
+add_definitions(-DQT_USE_FAST_CONCATENATION)
+add_definitions(-DQT_USE_FAST_OPERATOR_PLUS)
+add_definitions(-DQT_NO_CAST_TO_ASCII)
+# not (yet) possible
+#add_definitions(-DQT_NO_CAST_FROM_ASCII)
+add_definitions(-DQURL_NO_CAST_FROM_QSTRING)
+add_definitions(-DQT_DEPRECATED_WARNINGS)
+# not possible with kde 4.14 ...
+#add_definitions(-DQT_NO_DEPRECATED)
+add_definitions(-DQT_STRICT_ITERATORS)
 
-MACRO(KDE_ADD_KPART)
- kde4_add_plugin(${ARGV})
-ENDMACRO(KDE_ADD_KPART)
+include(MacroEnsureVersion)
+include(FindSubversion)
+include(kdesvn-macros)
 
-MACRO(KDE_ADD_MOC_FILES)
- KDE4_MOC_HEADERS(${ARGV})
-ENDMACRO(KDE_ADD_MOC_FILES)
-
-MACRO(KDESVN_INSTALL_ICONS)
- kde4_install_icons( ${ICON_INSTALL_DIR}  )
-ENDMACRO(KDESVN_INSTALL_ICONS)
-
-MACRO(KDESVN_GENERATE_LIBTOOL_FILE _subdir _target)
- KDE4_INSTALL_LIBTOOL_FILE(${_subdir} ${_target})
-ENDMACRO(KDESVN_GENERATE_LIBTOOL_FILE)
-
-include_directories (${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR} ${KDE4_INCLUDES}
-${QT_QTDBUS_INCLUDE_DIR})
-
-SET(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib${LIB_SUFFIX}/kde4)
-
-INCLUDE(MacroEnsureVersion)
-INCLUDE(FindSubversion)
-INCLUDE(SetupCompiler)
-INCLUDE(FindGettext)
-
-IF (__KDE_HAVE_GCC_VISIBILITY)
-    SET(HAVE_GCC_VISIBILITY On)
-    SET(_KDESVN_EXPORT "__attribute__ ((visibility(\"default\")))")
-    SET(_KDESVN_NOEXPORT "__attribute__ ((visibility(\"hidden\")))")
-ENDIF (__KDE_HAVE_GCC_VISIBILITY)
+# Enable exceptions
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${KDE4_ENABLE_EXCEPTIONS}")
 
 # from http://www.kdedevelopers.org/node/3171 and http://kdesvn.alwins-world.de/ticket/595#comment:5
-ADD_DEFINITIONS(-DKDE_DEFAULT_DEBUG_AREA=9510)
+add_definitions(-DKDE_DEFAULT_DEBUG_AREA=9510)
 
-INCLUDE_DIRECTORIES (
-    BEFORE
-    ${CMAKE_SOURCE_DIR}/src/svnqt
-)
-
-INCLUDE_DIRECTORIES (
+include_directories(
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/src/svnfrontend
     ${CMAKE_SOURCE_DIR}
     ${CMAKE_BINARY_DIR}/src
     ${CMAKE_BINARY_DIR}/src/svnfrontend
     ${CMAKE_BINARY_DIR}
-    ${KDE4_INCLUDE_DIR}
+    ${KDE4_INCLUDES}
     ${QT_INCLUDE_DIR}
     ${APR_INCLUDE_DIR}
     ${APU_INCLUDE_DIR}
     ${SUBVERSION_INCLUDE_DIR}
 )
 
-ADD_DEFINITIONS(${APR_CPP_FLAGS})
+add_definitions(${APR_CPP_FLAGS})
 
-IF(CMAKE_BUILD_TYPE MATCHES Debug)
-  # FindKde3 always make a "-O2" into it. That isn't nice.
-  STRING(REGEX REPLACE "-O2 " "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
-ENDIF(CMAKE_BUILD_TYPE MATCHES Debug)
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 
-#we requires exeptions!!!!
-STRING(REGEX REPLACE "-fno-exceptions " "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+add_subdirectory(src)
+add_subdirectory(doc)
 
-SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
-SET(_BASE_LDADD "-L${CMAKE_BINARY_DIR}/lib${LIB_SUFFIX}")
+configure_file(kdesvn-config.h.in kdesvn-config.h @ONLY)
+configure_file(Doxyfile.in Doxyfile @ONLY)
+configure_file(Doxyfile.svnqt.in Doxyfile.svnqt @ONLY)
 
-# current version
-IF (DAILY_BUILD)
-    EXECUTE_PROCESS(COMMAND "date" "+%Y%m%d" OUTPUT_VARIABLE BUILDDATE)
-    STRING(REPLACE "\n" "" BUILDDATE ${BUILDDATE})
-    SET(VERSION "${BASE_VERSION}.${BUILDDATE}")
-    SET(KDESVN_VERSION "\"${BASE_VERSION}-${BUILDDATE}\"")
-ELSE(DAILY_BUILD)
-    SET(VERSION "$ENV{KDESVN_VERSION}")
-    IF(NOT VERSION)
-        SET(VERSION ${BASE_VERSION})
-    ENDIF(NOT VERSION)
-    SET(KDESVN_VERSION \"${VERSION}\")
-ENDIF(DAILY_BUILD)
+set(DIST_EXCLUDE "Helperstuff/pic_design")
 
-SET(svnqt-name svnqt)
-ADD_SUBDIRECTORY(src)
-ADD_SUBDIRECTORY(po)
-ADD_SUBDIRECTORY(doc)
+set(MESSAGES_DIR ${CMAKE_SOURCE_DIR}/src)
 
-CONFIGURE_FILE(kdesvn-config.h.in kdesvn-config.h @ONLY)
-CONFIGURE_FILE(kdesvn.spec.in ${PROJECT_NAME}.spec @ONLY)
-CONFIGURE_FILE(Helperstuff/BuildService/kdesvn.spec.in Helperstuff/BuildService/${PROJECT_NAME}.spec @ONLY)
-CONFIGURE_FILE(Doxyfile.in Doxyfile @ONLY)
-CONFIGURE_FILE(Doxyfile.svnqt.in Doxyfile.svnqt @ONLY)
-
-SET(DIST_EXCLUDE "Helperstuff/pic_design")
-CONFIGURE_FILE(
-    "${CMAKE_CURRENT_SOURCE_DIR}/cmakemodules/makedist.sh.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/makedist.sh"
-    IMMEDIATE
-    @ONLY)
-
-CONFIGURE_FILE(
-    "${CMAKE_CURRENT_SOURCE_DIR}/cmakemodules/cmake_uninstall.cmake.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
-    IMMEDIATE @ONLY)
-
-ADD_CUSTOM_TARGET(uninstall
-    "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake")
-
-ADD_CUSTOM_TARGET(dist
-    "${CMAKE_BINARY_DIR}/makedist.sh"
-    DEPENDS doc
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-
-FILE(GLOB _POFILES po/*.po)
-FOREACH(_p ${_POFILES})
-  SET(POFILES "${_p} ${POFILES}")
-ENDFOREACH(_p)
-
-SET(MESSAGES_DIR ${CMAKE_SOURCE_DIR}/src)
-CONFIGURE_FILE(
-    "${CMAKE_CURRENT_SOURCE_DIR}/cmakemodules/package_messages.sh.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/package_messages.sh"
-    IMMEDIATE
-    @ONLY)
-ADD_CUSTOM_TARGET(package-messages
-    "${CMAKE_CURRENT_BINARY_DIR}/package_messages.sh")
-
-ADD_CUSTOM_TARGET(apidox
+add_custom_target(apidox
     "doxygen" "${CMAKE_BINARY_DIR}/Doxyfile"
     DEPENDS "${CMAKE_BINARY_DIR}/Doxyfile")
+
+include(MacroOptionalAddSubdirectory)
+macro_optional_add_subdirectory( po )

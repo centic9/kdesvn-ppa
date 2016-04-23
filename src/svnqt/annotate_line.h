@@ -6,6 +6,7 @@
 /*
  * ====================================================================
  * Copyright (c) 2002-2005 The RapidSvn Group.  All rights reserved.
+ * dev@rapidsvn.tigris.org
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -38,95 +39,77 @@
 
 namespace svn
 {
-  /**
-   * This class holds the data for one line in an annotation
-   */
-  class SVNQT_EXPORT AnnotateLine
-  {
-  public:
-      AnnotateLine (QLONG line_no,
-                    QLONG revision,
-                    const char *author,
-                    const char *date,
-                    const char *line);
+/**
+ * This class holds the data for one line in an annotation
+ */
+class SVNQT_EXPORT AnnotateLine
+{
+public:
+    AnnotateLine();
+    AnnotateLine(qlonglong line_no,
+                 qlonglong revision,
+                 const char *author,
+                 const char *date,
+                 const char *line,
+                 qlonglong merge_revision,
+                 const char *merge_author,
+                 const char *merge_date,
+                 const char *merge_path
+                );
 
-    AnnotateLine (QLONG line_no,
-                  QLONG revision,
-                  const char *author,
-                  const char *date,
-                  const char *line,
-                  QLONG merge_revision,
-                  const char *merge_author,
-                  const char *merge_date,
-                  const char *merge_path
+    AnnotateLine(qlonglong line_no,
+                 qlonglong revision,
+                 const PropertiesMap &revisionproperties,
+                 const char *line,
+                 qlonglong merge_revision,
+                 const PropertiesMap &mergeproperties,
+                 const char *merge_path,
+                 qlonglong revstart,
+                 qlonglong revend,
+                 bool local
                  );
 
-    AnnotateLine(
-        QLONG line_no,
-        QLONG revision,
-        PropertiesMap revisionproperties,
-        const char *line,
-        QLONG merge_revision,
-        PropertiesMap mergeproperties,
-        const char *merge_path,
-        QLONG revstart,
-        QLONG revend,
-        bool local
-    );
-
-    AnnotateLine ( const AnnotateLine &other);
-    AnnotateLine();
-    /**
-     * destructor
-     */
-    virtual ~AnnotateLine ()
-    {
-    }
-
-    QLONG
-    lineNumber () const
+    qlonglong
+    lineNumber() const
     {
         return m_line_no;
     }
-    QLONG
-    revision () const
+    qlonglong
+    revision() const
     {
         return m_revision;
     }
 
-
     const QByteArray &
-    author () const
+    author() const
     {
         return m_author;
     }
 
-
     const QDateTime &
-    date () const
+    date() const
     {
         return m_date;
     }
 
-
     const QByteArray &
-    line () const
+    line() const
     {
         return m_line;
     }
 
-  protected:
-    QLONG m_line_no;
-    QLONG m_revision;
+protected:
+    qlonglong m_line_no;
+    qlonglong m_revision;
     QDateTime m_date;
     QByteArray m_line;
     QByteArray m_author;
 
-    QLONG m_merge_revision;
+    qlonglong m_merge_revision;
     QDateTime m_merge_date;
     QByteArray m_merge_author;
     QByteArray m_merge_path;
-  };
+};
 }
 
 #endif

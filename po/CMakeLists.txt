@@ -1,26 +1,39 @@
-####
- #   Copyright (C) 2005-2009 by Rajko Albrecht  ral@alwins-world.de        #
- #   http://kdesvn.alwins-world.de/                                        #
- #                                                                         #
- #   This program is free software; you can redistribute it and/or modify  #
- #   it under the terms of the GNU General Public License as published by  #
- #   the Free Software Foundation; either version 2 of the License, or     #
- #   (at your option) any later version.                                   #
- #                                                                         #
- #   This program is distributed in the hope that it will be useful,       #
- #   but WITHOUT ANY WARRANTY; without even the implied warranty of        #
- #   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         #
- #   GNU General Public License for more details.                          #
- #                                                                         #
- #   You should have received a copy of the GNU General Public License     #
- #   along with this program; if not, write to the                         #
- #   Free Software Foundation, Inc.,                                       #
- #   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.         #
- ####
+# The pofiles macro creates in some versions same name targets
+# which since cmake 2.8 leads to target clashes.
+# Hence force the old policy for all po directories.
+# http://public.kitware.com/Bug/view.php?id=12952
+cmake_policy(SET CMP0002 OLD)
 
-FILE(GLOB pofiles RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.po)
-
-# disable unfinished/ancient translations
-LIST(REMOVE_ITEM pofiles "nl.po")
-
-GETTEXT_CREATE_TRANSLATIONS("kdesvn.pot" "ALL" ${pofiles} )
+find_package(Gettext REQUIRED)
+if (NOT GETTEXT_MSGMERGE_EXECUTABLE)
+MESSAGE(FATAL_ERROR "Please install msgmerge binary")
+endif (NOT GETTEXT_MSGMERGE_EXECUTABLE)
+if (NOT GETTEXT_MSGFMT_EXECUTABLE)
+MESSAGE(FATAL_ERROR "Please install msgmerge binary")
+endif (NOT GETTEXT_MSGFMT_EXECUTABLE)
+add_subdirectory(ca@valencia)
+add_subdirectory(nl)
+add_subdirectory(ro)
+add_subdirectory(bs)
+add_subdirectory(cs)
+add_subdirectory(hu)
+add_subdirectory(fi)
+add_subdirectory(pt)
+add_subdirectory(el)
+add_subdirectory(lt)
+add_subdirectory(fr)
+add_subdirectory(uk)
+add_subdirectory(ca)
+add_subdirectory(gl)
+add_subdirectory(ja)
+add_subdirectory(ru)
+add_subdirectory(de)
+add_subdirectory(ug)
+add_subdirectory(pl)
+add_subdirectory(es)
+add_subdirectory(it)
+add_subdirectory(ast)
+add_subdirectory(pt_BR)
+add_subdirectory(en_GB)
+add_subdirectory(sk)
+add_subdirectory(sv)

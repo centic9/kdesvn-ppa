@@ -22,10 +22,11 @@
 
 #include "ui_loaddmpdlg.h"
 
-class LoadDmpDlg_impl: public QWidget, public Ui::LoadDmpDlg {
+class LoadDmpDlg_impl: public QWidget, public Ui::LoadDmpDlg
+{
     Q_OBJECT
 public:
-    LoadDmpDlg_impl(QWidget *parent = 0, const char *name = 0);
+    explicit LoadDmpDlg_impl(QWidget *parent = 0);
     virtual ~LoadDmpDlg_impl();
     bool usePost()const;
     bool usePre()const;

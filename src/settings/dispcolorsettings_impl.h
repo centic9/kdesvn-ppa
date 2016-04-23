@@ -22,10 +22,11 @@
 
 #include "src/settings/ui_dispcolor_settings.h"
 
-class DispColorSettings_impl: public QWidget, public Ui::DispColorSettings {
-Q_OBJECT
+class DispColorSettings_impl: public QWidget, public Ui::DispColorSettings
+{
+    Q_OBJECT
 public:
-    DispColorSettings_impl(QWidget *parent = 0, const char *name = 0);
+    explicit DispColorSettings_impl(QWidget *parent = 0);
     virtual ~DispColorSettings_impl();
 protected slots:
     virtual void coloredStateToggled(bool);

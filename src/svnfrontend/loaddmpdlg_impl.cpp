@@ -26,17 +26,12 @@
 #include <qradiobutton.h>
 #include <qcheckbox.h>
 
-LoadDmpDlg_impl::LoadDmpDlg_impl(QWidget *parent, const char *name)
+LoadDmpDlg_impl::LoadDmpDlg_impl(QWidget *parent)
     : QWidget(parent)
 {
     setupUi(this);
-    if (name) {
-        setObjectName(name);
-    } else {
-        setObjectName("LoadDmpDlg_impl");
-    }
     m_Dumpfile->setMode(KFile::File);
-    m_Repository->setMode(KFile::Directory|KFile::LocalOnly);
+    m_Repository->setMode(KFile::Directory | KFile::LocalOnly);
 }
 
 LoadDmpDlg_impl::~LoadDmpDlg_impl()
@@ -50,7 +45,6 @@ bool LoadDmpDlg_impl::usePost()const
 {
     return m_UsePost->isChecked();
 }
-
 
 /*!
     \fn LoadDmpDlg_impl::usePre()const
@@ -78,7 +72,6 @@ int LoadDmpDlg_impl::uuidAction()const
     return 0;
 }
 
-
 /*!
     \fn LoadDmpDlg_impl::dumpFile()const
  */
@@ -87,20 +80,13 @@ KUrl LoadDmpDlg_impl::dumpFile()const
     return m_Dumpfile->url();
 }
 
-
 /*!
     \fn LoadDmpDlg_impl::repository()const
  */
 QString LoadDmpDlg_impl::repository()const
 {
-    KUrl u = m_Repository->url();
-    QString res = u.path();
-    while (res.endsWith('/')) {
-        res.truncate(res.length()-1);
-    }
-    return res;
+    return m_Repository->url().path(KUrl::RemoveTrailingSlash);
 }
-
 
 /*!
     \fn LoadDmpDlg_impl::parentPath()const
@@ -108,10 +94,8 @@ QString LoadDmpDlg_impl::repository()const
 QString LoadDmpDlg_impl::parentPath()const
 {
     QString res = m_Rootfolder->text();
-    while (res.endsWith('/')) {
-        res.truncate(res.length()-1);
+    while (res.endsWith(QLatin1Char('/'))) {
+        res.chop(1);
     }
     return res;
 }
-
-#include "loaddmpdlg_impl.moc"

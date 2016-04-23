@@ -28,23 +28,25 @@
 class CommitActionEntry
 {
 public:
-    enum ACTION_TYPE{
+    enum ACTION_TYPE {
         COMMIT         = 1,
         ADD_COMMIT     = 2,
         DELETE         = 4,
         MISSING_DELETE = 8,
 
-        ALL            = COMMIT|ADD_COMMIT|DELETE|MISSING_DELETE,
+        ALL            = COMMIT | ADD_COMMIT | DELETE | MISSING_DELETE,
     };
+    Q_FLAGS(ACTION_TYPE)
+    Q_DECLARE_FLAGS(ActionTypes, ACTION_TYPE)
 
-    CommitActionEntry(const QString&,const QString&,ACTION_TYPE kind = COMMIT);
-    CommitActionEntry(const CommitActionEntry&);
+    explicit CommitActionEntry(const QString &, const QString &, ACTION_TYPE kind = COMMIT);
+    explicit CommitActionEntry(const CommitActionEntry &);
     CommitActionEntry();
 
-    virtual ~CommitActionEntry();
+    ~CommitActionEntry();
 
-    const QString&action()const;
-    const QString&name()const;
+    const QString &action()const;
+    const QString &name()const;
     ACTION_TYPE type()const;
 
 protected:
@@ -57,19 +59,33 @@ protected:
 class CommitModelNode
 {
 public:
-    CommitModelNode(const svn::CommitItem&);
-    CommitModelNode(const QString&,const QString&);
-    CommitModelNode(const CommitActionEntry&,bool checked);
+    explicit CommitModelNode(const svn::CommitItem &);
+    explicit CommitModelNode(const CommitActionEntry &, bool checked);
 
-    virtual ~CommitModelNode();
+    ~CommitModelNode();
 
-    void setCheckable(bool how){m_Checkable=how;}
-    bool checkable()const{return m_Checkable;}
+    void setCheckable(bool how)
+    {
+        m_Checkable = how;
+    }
+    bool checkable()const
+    {
+        return m_Checkable;
+    }
 
-    void setChecked(bool how){m_Checked=how;}
-    bool checked()const{return m_Checked;}
+    void setChecked(bool how)
+    {
+        m_Checked = how;
+    }
+    bool checked()const
+    {
+        return m_Checked;
+    }
 
-    const CommitActionEntry&actionEntry()const{return m_Content;}
+    const CommitActionEntry &actionEntry()const
+    {
+        return m_Content;
+    }
 
 protected:
     CommitActionEntry m_Content;

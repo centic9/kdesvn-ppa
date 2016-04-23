@@ -18,7 +18,6 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.         *
  ***************************************************************************/
 
-
 #include "copymoveview_impl.h"
 #include <ksqueezedtextlabel.h>
 #include <qcheckbox.h>
@@ -29,22 +28,20 @@
 #include <KDialog>
 #include <KVBox>
 
-CopyMoveView_impl::CopyMoveView_impl(const QString&baseName,const QString&sourceName,bool move,QWidget* parent, const char* name, Qt::WFlags /*fl*/)
-// : CopyMoveView(parent,name,fl)
+CopyMoveView_impl::CopyMoveView_impl(const QString &baseName, const QString &sourceName, bool move, QWidget *parent)
     : QWidget(parent)
 {
     setupUi(this);
-    setObjectName(name);
 
     m_BaseName = baseName;
-    if (m_BaseName.length()>0 && !m_BaseName.endsWith('/')) {
-        m_BaseName+='/';
+    if (!m_BaseName.isEmpty() && !m_BaseName.endsWith('/')) {
+        m_BaseName += '/';
     }
     m_PrefixLabel->setText(m_BaseName);
-    m_OldNameLabel->setText("<b>"+sourceName+"</b>");
+    m_OldNameLabel->setText("<b>" + sourceName + "</b>");
     m_OldName = sourceName;
-    if (m_BaseName.length()>0) {
-        QString t = m_OldName.right(m_OldName.length()-m_BaseName.length());
+    if (m_BaseName.length() > 0) {
+        QString t = m_OldName.right(m_OldName.length() - m_BaseName.length());
         m_NewNameInput->setText(t);
     } else {
         m_PrefixLabel->hide();
@@ -62,57 +59,57 @@ CopyMoveView_impl::~CopyMoveView_impl()
 {
 }
 
-
 /*!
     \fn CopyMoveView_impl::newName()
  */
-QString CopyMoveView_impl::newName()
+QString CopyMoveView_impl::newName() const
 {
-    return m_BaseName+m_NewNameInput->text();
+    return m_BaseName + m_NewNameInput->text();
 }
-
 
 /*!
     \fn CopyMoveView_impl::force()
  */
-bool CopyMoveView_impl::force()
+bool CopyMoveView_impl::force() const
 {
     return m_ForceBox->isChecked();
 }
 
-
 /*!
     \fn CopyMoveView_impl::getMoveCopyTo(bool*ok,bool*force,const QString&old,const QString&base,QWidget*)
  */
-QString CopyMoveView_impl::getMoveCopyTo(bool*ok,bool*force,bool move,
-    const QString&old,const QString&base,QWidget*parent,const char*name)
+QString CopyMoveView_impl::getMoveCopyTo(bool *ok, bool *force, bool move,
+        const QString &old, const QString &base, QWidget *parent)
 {
 //     KDialogBase dlg(parent,name,true,(move?i18n("Move/Rename file/dir"):i18n("Copy file/dir")),
 //             KDialogBase::Ok|KDialogBase::Cancel,
 //             KDialogBase::NoDefault);
 //     QWidget* Dialog1Layout = dlg.makeVBoxMainWidget();
-    KDialog dlg(parent);
-    dlg.setObjectName(name);
-    dlg.setCaption(move?i18n("Move/Rename file/dir"):i18n("Copy file/dir"));
-    dlg.setModal(true);
-    dlg.setButtons(KDialog::Ok | KDialog::Cancel);
-    dlg.setDefaultButton(KDialog::Ok);
-    dlg.showButtonSeparator( false );
+    QPointer<KDialog> dlg(new KDialog(parent));
+    dlg->setCaption(move ? i18n("Move/Rename file/directory") : i18n("Copy file/directory"));
+    dlg->setButtons(KDialog::Ok | KDialog::Cancel);
+    dlg->setDefaultButton(KDialog::Ok);
+    dlg->showButtonSeparator(false);
 
-    KVBox *Dialog1Layout = new KVBox(&dlg);
-    dlg.setMainWidget(Dialog1Layout);
+    KVBox *Dialog1Layout = new KVBox(dlg);
+    dlg->setMainWidget(Dialog1Layout);
 
-    CopyMoveView_impl*ptr=new CopyMoveView_impl(base,old,(move),Dialog1Layout);
+    CopyMoveView_impl *ptr = new CopyMoveView_impl(base, old, (move), Dialog1Layout);
     QString nName;
-    dlg.resize( QSize(500,160).expandedTo(dlg.minimumSizeHint()) );
-    if (dlg.exec()!=QDialog::Accepted) {
-        if (ok) *ok = false;
+    dlg->resize(QSize(500, 160).expandedTo(dlg->minimumSizeHint()));
+    if (dlg->exec() != QDialog::Accepted) {
+        if (ok) {
+            *ok = false;
+        }
     } else {
-        if (force) *force = ptr->force();
+        if (force) {
+            *force = ptr->force();
+        }
         nName = ptr->newName();
-        if (ok) *ok=true;
+        if (ok) {
+            *ok = true;
+        }
     }
+    delete dlg;
     return nName;
 }
-
-#include "copymoveview_impl.moc"

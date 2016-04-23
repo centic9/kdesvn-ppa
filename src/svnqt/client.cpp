@@ -6,6 +6,7 @@
 /*
  * ====================================================================
  * Copyright (c) 2002-2005 The RapidSvn Group.  All rights reserved.
+ * dev@rapidsvn.tigris.org
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -27,74 +28,45 @@
  * history and logs, available at http://rapidsvn.tigris.org/.
  * ====================================================================
  */
-#if defined( _MSC_VER) && _MSC_VER <= 1550
-#pragma warning( disable: 4786 )// debug symbol truncated
-#endif
 
 // svncpp
-#include "svnqt/client.h"
-#include "svnqt/client_impl.h"
-#include "svnqt/svnqt_defines.h"
+#include "client.h"
+#include "client_impl.h"
+#include "svnqt_defines.h"
 
-#include "svn_opt.h"
-
+#include <svn_opt.h>
 #include <svn_cmdline.h>
 
-#include <qstringlist.h>
-#include <qdir.h>
+#include <QDir>
 
 namespace svn
 {
-    //! this namespace contains only internal stuff not for public use
-    namespace internal {
-    //! small helper class
-    /*!
-        There will be an static instance created for calling the constructor at program load.
-     */
-        class SvnInit
-        {
-            public:
-        //! constructor calling initialize functions
-                SvnInit();
-                ~SvnInit(){};
-        };
 
-        SvnInit::SvnInit() {
-            svn_cmdline_init("svnqt",0);
-            //qDebug("svn_cmdline_init done");
-            QString BasePath=QDir::HOMEDIR();
-            QDir d;
-            if (!d.exists(BasePath)) {
-                d.mkdir(BasePath);
-            }
-            BasePath=BasePath+'/'+".svnqt";
-            if (!d.exists(BasePath)) {
-                d.mkdir(BasePath);
-            }
+Client::Client()
+{
+}
 
+Client::~Client()
+{
+}
+
+ClientP Client::getobject(const ContextP &context)
+{
+    static bool s_initialized = false;
+    if (!s_initialized) {
+        svn_cmdline_init("svnqt", 0);
+        QString basePath = QDir::homePath();
+        QDir d;
+        if (!d.exists(basePath)) {
+            d.mkpath(basePath);
+        }
+        basePath = basePath + QLatin1String("/.svnqt");
+        if (!d.exists(basePath)) {
+            d.mkdir(basePath);
         }
     }
-
-  Client::Client()
-  {
-  }
-
-  Client::~Client ()
-  {
-  }
-
-  Client*Client::getobject(ContextP context,int subtype)
-  {
-      static internal::SvnInit sInit;
-    switch(subtype) {
-      case 0:
-       return new Client_impl(context);
-       break;
-      default:
-       break;
-    }
-    return 0L;
-  }
+    return ClientP(new Client_impl(context));
+}
 }
 
 /* -----------------------------------------------------------------

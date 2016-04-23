@@ -18,222 +18,124 @@
  #   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.         #
  ####
 
-include (SvnqtMacros)
-
-SET(SOURCES
-    client_update_parameter.cpp
+set(SOURCES
+    annotate_line.cpp
     apr.cpp
+    cache/DatabaseException.cpp
+    cache/LogCache.cpp
+    cache/ReposConfig.cpp
+    cache/ReposLog.cpp
     client_annotate.cpp
+    client_annotate_parameter.cpp
     client_cat.cpp
+    client_commit_parameter.cpp
     client.cpp
     client_diff.cpp
+    client_impl.cpp
+    client_lock.cpp
     client_ls.cpp
+    client_merge.cpp
     client_modify.cpp
+    client_parameter.cpp
     client_property.cpp
     client_status.cpp
+    client_update_parameter.cpp
+    commititem.cpp
+    conflictdescription.cpp
+    conflictresult.cpp
     context.cpp
+    contextdata.cpp
     datetime.cpp
+    diff_data.cpp
+    diffoptions.cpp
     dirent.cpp
     entry.cpp
     exception.cpp
+    info_entry.cpp
+    lock_entry.cpp
     log_entry.cpp
     path.cpp
     pool.cpp
-    revision.cpp
-    status.cpp
-    targets.cpp
-    url.cpp
-    version_check.cpp
-    wc.cpp
-    lock_entry.cpp
-    client_lock.cpp
-    info_entry.cpp
-    client_impl.cpp
-    contextdata.cpp
-    commititem.cpp
+    repoparameter.cpp
     repository.cpp
     repositorydata.cpp
     repositorylistener.cpp
-    repoparameter.cpp
-    svnstream.cpp
-    diff_data.cpp
-    svnfilestream.cpp
-    stringarray.cpp
-    diffoptions.cpp
-    conflictdescription.cpp
-    conflictresult.cpp
-    client_merge.cpp
-    cache/LogCache.cpp
-    cache/ReposLog.cpp
-    cache/DatabaseException.cpp
-    cache/ReposConfig.cpp
-    client_parameter.cpp
-    client_commit_parameter.cpp
-    client_annotate_parameter.cpp
     reposnotify.cpp
-    annotate_line.cpp
+    revision.cpp
+    status.cpp
+    stringarray.cpp
+    svnfilestream.cpp
+    svnstream.cpp
+    targets.cpp
+    url.cpp
+    version_check.cpp
     )
 
-SET(CACHEINST_HEADERS
-    cache/LogCache.h
-    cache/ReposLog.h
-    cache/DatabaseException.h
-    cache/ReposConfig.h
-    cache/DatabaseException.h
-    cache/conversion_check.h
-)
 
-SET(INST_HEADERS
-    annotate_line.h
-    apr.h
-    check.h
-    client.h
-    commititem.h
-    context.h
-    context_listener.h
-    datetime.h
-    dirent.h
-    entry.h
-    exception.h
-    info_entry.h
-    lock_entry.h
-    log_entry.h
-    path.h
-    pool.h
-    repository.h
-    repositorylistener.h
-    repoparameter.cpp
-    revision.h
-    smart_pointer.h
-    shared_pointer.h
-    status.h
-    svnfilestream.h
-    svnstream.h
-    svnqttypes.h
-    targets.h
-    url.h
-    version_check.h
-    wc.h
-    stringarray.h
-    diffoptions.h
-    conflictdescription.h
-    conflictresult.h
-    client_parameter.h
-    repoparameter.h
-    client_commit_parameter.h
-    client_annotate_parameter.h
-    client_update_parameter.h
-    reposnotify.h
-    )
+if(QT_LUPDATE_EXECUTABLE)
+    message(STATUS "Setting up language target")
 
-FILE(GLOB svnhdr RELATIVE  ${CMAKE_CURRENT_SOURCE_DIR} "*.h")
-SET(svnhdr ${svnhdr} ${CACHE_INST_HEADERS})
-
-SET(QT_LIBRARIES "${QT_QTCORE_LIBRARY}")
-MESSAGE(STATUS "Qt: ${QT_LIBRARIES}")
-SET(TOUTF8 "toUtf8")
-SET(FROMUTF8 "fromUtf8")
-SET(QLIST "QList")
-SET(TOASCII "toAscii")
-SET(HOMEDIR "homePath")
-IF(NOT svnqt-name)
-SET(svnqt-name svnqt)
-ENDIF(NOT svnqt-name)
-
-SET(QDATABASE "QSqlDatabase")
-SET(QLONG "qlonglong")
-
-# must set from caller before - here no checks of compiler will done!
-IF (HAVE_GCC_VISIBILITY)
-    SET(_SVNQT_EXPORT "__attribute__ ((visibility(\"default\")))")
-    SET(_SVNQT_NOEXPORT "__attribute__ ((visibility(\"hidden\")))")
-ENDIF (HAVE_GCC_VISIBILITY)
-
-IF (WIN32)
-    SET(_SVNQT_EXPORT "__declspec(dllexport)")
-ENDIF (WIN32)
-
-IF (QT_LUPDATE_EXECUTABLE)
-    MESSAGE(STATUS "Setting up language target")
-
-    FILE(GLOB _LANGFILES lang/*.ts)
-    FOREACH(_p ${_LANGFILES})
-        SET(LANGFILES "-ts ${_p} ${LANGFILES}")
-    ENDFOREACH(_p)
-    CONFIGURE_FILE(
-    "${CMAKE_CURRENT_SOURCE_DIR}/cmakemodules/update-language.sh.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/update-language.sh"
-    IMMEDIATE
-    @ONLY)
-    ADD_CUSTOM_TARGET(svnqt_update_translation
+    file(GLOB _LANGFILES lang/*.ts)
+    foreach(_p ${_LANGFILES})
+        set(LANGFILES "-ts ${_p} ${LANGFILES}")
+    endforeach()
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/update-language.sh.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/update-language.sh"
+        IMMEDIATE
+        @ONLY)
+    add_custom_target(svnqt_update_translation
         "${CMAKE_CURRENT_BINARY_DIR}/update-language.sh"
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         VERBATIM
     )
-    ADD_SUBDIRECTORY(lang)
-ENDIF (QT_LUPDATE_EXECUTABLE)
+    add_subdirectory(lang)
+endif()
 
-CONFIGURE_FILE(
+configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/svnqt_defines.h.in"
     "${CMAKE_CURRENT_BINARY_DIR}/svnqt_defines.h"
     IMMEDIATE
     @ONLY)
 
-SET(INST_HEADERS ${INST_HEADERS} ${CMAKE_CURRENT_BINARY_DIR}/svnqt_defines.h)
-INCLUDE_DIRECTORIES(BEFORE ${CMAKE_CURRENT_BINARY_DIR})
+add_library(svnqt STATIC ${SOURCES})
+if(WIN32)
+    target_compile_definitions(svnqt PUBLIC _USE_32BIT_TIME_T)
+endif()
 
-ADD_LIBRARY(${svnqt-name} SHARED ${SOURCES} ${svnhdr})
-IF(WIN32)
-    ADD_DEFINITIONS(-D_USE_32BIT_TIME_T)
-ELSE(WIN32)
-    SET(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib${LIB_SUFFIX})
-    SET_TARGET_PROPERTIES(${svnqt-name}
-        PROPERTIES
-        COMPILE_FLAGS ${CMAKE_SHARED_LIBRARY_CXX_FLAGS})
-ENDIF(WIN32)
+set(ALL_LINKFLAGS ${APR_EXTRA_LDFLAGS})
+set(ALL_LINKFLAGS "${ALL_LINKFLAGS} ${APU_EXTRA_LDFLAGS}")
 
-SET(LIB_MAJOR 7)
-SET(LIB_MINOR 0)
-SET(LIB_RELEASE 1)
+if(WIN32 OR APPLE)
+    set_property(TARGET svnqt APPEND PROPERTY LINK_FLAGS "${ALL_LINKFLAGS} ${LINK_NO_UNDEFINED}")
+else()
+    set_property(TARGET svnqt APPEND PROPERTY LINK_FLAGS "-Wl,--as-needed ${ALL_LINKFLAGS} ${LINK_NO_UNDEFINED}")
+endif()
 
-SET(_soversion ${LIB_MAJOR}.${LIB_MINOR}.${LIB_RELEASE})
+target_link_libraries(svnqt
+    ${SUBVERSION_ALL_LIBS}
+    ${QT_QTCORE_LIBRARY}
+    ${QT_QTSQL_LIBRARY}
+)
+set_property(TARGET svnqt APPEND PROPERTY COMPILE_FLAGS ${APR_CPP_FLAGS})
+set_property(TARGET svnqt PROPERTY CXX_VISIBILITY_PRESET hidden)
 
-SET_TARGET_PROPERTIES(${svnqt-name} PROPERTIES
-    SOVERSION ${LIB_MAJOR}
-    VERSION ${_soversion})
-
-SET(ALL_LINKFLAGS ${APR_EXTRA_LIBFLAGS})
-SET(ALL_LINKFLAGS "${ALL_LINKFLAGS} ${APU_EXTRA_LIBFLAGS}")
-
-IF(WIN32 OR APPLE)
-    SET_TARGET_PROPERTIES(${svnqt-name} PROPERTIES LINK_FLAGS "${ALL_LINKFLAGS} ${LINK_NO_UNDEFINED}")
-ELSE(WIN32 OR APPLE)
-    SET_TARGET_PROPERTIES(${svnqt-name} PROPERTIES LINK_FLAGS "-Wl,--as-needed ${ALL_LINKFLAGS} ${LINK_NO_UNDEFINED}")
-ENDIF(WIN32 OR APPLE)
-
-TARGET_LINK_LIBRARIES(${svnqt-name} ${QT_LIBRARIES} ${SUBVERSION_ALL_LIBS} ${QT_QTSQL_LIBRARY})
-
-IF (WIN32)
-    TARGET_LINK_LIBRARIES( ${svnqt-name} wsock32.lib  )
-ENDIF (WIN32)
+if(WIN32)
+    target_link_libraries(svnqt wsock32.lib)
+endif()
 
 # Just a small linking test
-IF (BUILD_TESTS)
-    ADD_EXECUTABLE(testlink testmain.cpp)
-    TARGET_LINK_LIBRARIES(testlink ${svnqt-name})
-ENDIF (BUILD_TESTS)
+if(KDE4_BUILD_TESTS)
+    add_executable(testlink testmain.cpp)
+    target_link_libraries(testlink svnqt)
+endif()
 
 # install rules
-# in win32 we don't install it
-IF(NOT WIN32)
-    INSTALL(TARGETS ${svnqt-name} LIBRARY DESTINATION ${LIB_INSTALL_DIR}
-            RUNTIME DESTINATION ${BIN_INSTALL_DIR}
-            ARCHIVE DESTINATION ${LIB_INSTALL_DIR})
-    INSTALL(FILES ${INST_HEADERS} DESTINATION include/svnqt)
-    INSTALL(FILES ${CACHEINST_HEADERS} DESTINATION include/svnqt/cache)
-ENDIF(NOT WIN32)
+install(TARGETS svnqt LIBRARY DESTINATION ${LIB_INSTALL_DIR}
+        RUNTIME DESTINATION ${BIN_INSTALL_DIR}
+        ARCHIVE DESTINATION ${LIB_INSTALL_DIR})
 
-IF (BUILD_TESTS)
-  ADD_SUBDIRECTORY(tests)
-  ADD_SUBDIRECTORY(cache/test)
-ENDIF (BUILD_TESTS)
+if(KDE4_BUILD_TESTS)
+  add_subdirectory(tests)
+  add_subdirectory(cache/test)
+endif()

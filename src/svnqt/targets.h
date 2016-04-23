@@ -6,6 +6,7 @@
 /*
  * ====================================================================
  * Copyright (c) 2002-2005 The RapidSvn Group.  All rights reserved.
+ * dev@rapidsvn.tigris.org
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -31,38 +32,37 @@
 #ifndef SVNQT_TARGETS_H
 #define SVNQT_TARGETS_H
 
-#include "svnqt/svnqt_defines.h"
-#include "svnqt/svnqttypes.h"
-
+#include <svnqt/svnqt_defines.h>
+#include <svnqt/svnqttypes.h>
 
 // apr api
-#include "apr_tables.h"
+#include <apr_tables.h>
 
 class QStringList;
 
 namespace svn
 {
-  // forward declarations
-  class Pool;
+// forward declarations
+class Pool;
 
-  /**
-   * Encapsulation for Subversion target arrays handling
-   */
-  class SVNQT_EXPORT Targets
-  {
-  public:
+/**
+ * Encapsulation for Subversion target arrays handling
+ */
+class SVNQT_EXPORT Targets
+{
+public:
     /**
      * Constructor
      *
      * @param targets vector of paths
      */
-    Targets (const svn::Pathes & targets);
+    explicit Targets(const svn::Paths &targets);
 
     /**
      * Constructor
      * @param path a single paths
      */
-    Targets (const svn::Path & target);
+    Targets(const svn::Path &target);    //krazy:exclude=explicit
 
     /**
      * Constructor from an APR array containing
@@ -70,7 +70,7 @@ namespace svn
      *
      * @param targets APR array header
      */
-    Targets (const apr_array_header_t * targets);
+    Targets(const apr_array_header_t *targets);    //krazy:exclude=explicit
 
     /**
      * Constructor. Initializes list with just
@@ -78,31 +78,31 @@ namespace svn
      *
      * @param target
      */
-    Targets (const QString& target = QString());
+    Targets(const QString &target = QString());    //krazy:exclude=explicit
     /**
      * Constructor. Initializes list with just
      * one entry
      *
      * @param target
      */
-    Targets (const char * target);
+    Targets(const char *target);    //krazy:exclude=explicit
     /**
      * Constructor. Convert stringlist into target list.
      * @param targets
      */
-    Targets(const QStringList&targets);
+    Targets(const QStringList &targets);    //krazy:exclude=explicit
 
     /**
      * Copy Constructor
      *
      * @param targets Source
      */
-    Targets (const Targets & targets);
+    Targets(const Targets &targets);
 
     /**
      * Destructor
      */
-    virtual ~Targets ();
+    virtual ~Targets();
 
     /**
      * Returns an apr array containing
@@ -111,32 +111,32 @@ namespace svn
      * @param pool Pool used for conversion
      */
     apr_array_header_t *
-    array (const Pool & pool) const;
+    array(const Pool &pool) const;
 
     /**
      * Returns a vector of paths
      *
      * @return vector of paths
      */
-    const Pathes &
+    const Paths &
     targets() const;
 
     /**
      * @return the number of targets
      */
-    size_t size () const;
+    size_t size() const;
 
     /**
      * operator to return the vector
      *
      * @return vector with targets
      */
-    operator const Pathes & () const
+    operator const Paths &() const
     {
-      return m_targets;
+        return m_targets;
     }
 
-    const Path& operator [](size_t which)const;
+    const Path &operator [](size_t which)const;
     /**
      * returns one single target.
      * the first in the vector, if no parameter given if there are more
@@ -146,12 +146,11 @@ namespace svn
      * @return single path
      */
     const Path
-    target(Pathes::size_type which) const;
+    target(Paths::size_type which) const;
 
-
-  private:
-    Pathes m_targets;
-  };
+private:
+    Paths m_targets;
+};
 }
 
 #endif

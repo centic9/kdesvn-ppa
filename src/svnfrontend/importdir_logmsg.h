@@ -28,21 +28,21 @@ class QCheckBox;
 */
 class Importdir_logmsg : public Commitmsg_impl
 {
-Q_OBJECT
+    Q_OBJECT
 public:
-    Importdir_logmsg(QWidget *parent = 0);
+    explicit Importdir_logmsg(QWidget *parent = 0);
 
     virtual ~Importdir_logmsg();
 
     bool createDir();
     bool ignoreUnknownNodes();
     bool noIgnore();
-    void createDirboxDir(const QString & which=QString());
+    void createDirboxDir(const QString &which = QString());
 
 protected:
-    QCheckBox*m_createDirBox;
-    QCheckBox*m_ignoreUnknownNodes;
-    QCheckBox*m_noIgnore;
+    QCheckBox *m_createDirBox;
+    QCheckBox *m_ignoreUnknownNodes;
+    QCheckBox *m_noIgnore;
 };
 
 #endif

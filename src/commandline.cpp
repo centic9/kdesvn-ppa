@@ -21,27 +21,23 @@
 #include "kdesvn_part.h"
 #include "commandline_part.h"
 #include <kcmdlineargs.h>
-// #include <kdialogbase.h>
-#include <KDialog>
-#include <ktextbrowser.h>
-#include <kapplication.h>
 #include <klocale.h>
 #include <qstring.h>
-#include <qlayout.h>
 #include <ktoolinvocation.h>
+#include <klibloader.h>
 
 class CommandLineData
 {
 public:
-    CommandLineData():cmd(""){};
-    virtual ~CommandLineData(){};
+    CommandLineData(): cmd() {}
+    virtual ~CommandLineData() {}
 
     void displayHelp();
 
     QString cmd;
 };
 
-CommandLine::CommandLine(KCmdLineArgs*_args)
+CommandLine::CommandLine(KCmdLineArgs *_args)
 {
     m_args = _args;
     m_data = new CommandLineData;
@@ -53,30 +49,30 @@ CommandLine::~CommandLine()
 
 int CommandLine::exec()
 {
-    if (!m_args||m_args->count()<1) {
+    if (!m_args || m_args->count() < 1) {
         return -1;
     }
-    if (m_args->count()<2) {
+    if (m_args->count() < 2) {
         m_data->cmd = "help";
     } else {
         m_data->cmd = m_args->arg(1);
     }
-    if (m_data->cmd=="help") {
+    if (m_data->cmd == "help") {
         m_data->displayHelp();
         return 0;
     }
     KLibFactory *factory = 0;
 #ifdef EXTRA_KDE_LIBPATH
-    factory = KLibLoader::self()->factory(EXTRA_KDE_LIBPATH+QString("/kdesvnpart.so"));
+    factory = KLibLoader::self()->factory(EXTRA_KDE_LIBPATH + QString("/kdesvnpart.so"));
     if (!factory)
 #endif
-    factory = KLibLoader::self()->factory("kdesvnpart");
+        factory = KLibLoader::self()->factory("kdesvnpart");
     if (factory) {
-        QObject * _p = (factory->create<QObject>("commandline_part",this));
-        if (!_p || QString(_p->metaObject()->className()).compare("commandline_part")!=0) {
+        QObject *_p = (factory->create<QObject>("commandline_part", this));
+        if (!_p || QString(_p->metaObject()->className()).compare("commandline_part") != 0) {
             return 0;
         }
-        commandline_part * cpart = static_cast<commandline_part*>(_p);
+        commandline_part *cpart = static_cast<commandline_part *>(_p);
         int res = cpart->exec(m_args);
         return res;
     }
@@ -85,7 +81,5 @@ int CommandLine::exec()
 
 void CommandLineData::displayHelp()
 {
-    KToolInvocation::invokeHelp("kdesvn-commandline","kdesvn");
+    KToolInvocation::invokeHelp("kdesvn-commandline", "kdesvn");
 }
-
-#include "commandline.moc"

@@ -6,6 +6,7 @@
 /*
  * ====================================================================
  * Copyright (c) 2002-2005 The RapidSvn Group.  All rights reserved.
+ * dev@rapidsvn.tigris.org
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -40,31 +41,31 @@
 #include <QTextStream>
 
 // subversion api
-#include "svn_types.h"
-#include "svn_opt.h"
+#include <svn_types.h>
+#include <svn_opt.h>
 
 namespace svn
 {
-  /**
-   * Class that encapsulates svn_opt_revnum_t.
-   *
-   * @see svn_opt_revnum_t
-   */
-  class SVNQT_EXPORT Revision
-  {
-  private:
+/**
+ * Class that encapsulates svn_opt_revnum_t.
+ *
+ * @see svn_opt_revnum_t
+ */
+class SVNQT_EXPORT Revision
+{
+private:
     svn_opt_revision_t m_revision;
 
     void
-    init (const svn_opt_revision_t * revision);
+    init(const svn_opt_revision_t *revision);
 
     void
-    assign(const QString&);
+    assign(const QString &);
 
     void
-    assign(const QDateTime&);
+    assign(const QDateTime &);
 
-  public:
+public:
     /*!
      * \defgroup Predefinedrevisions Predefined revision
      *
@@ -102,40 +103,40 @@ namespace svn
      *
      * @param revision revision information
      */
-    Revision (const svn_opt_revision_t * revision);
+    Revision(const svn_opt_revision_t *revision);    //krazy:exclude=explicit
 
     /**
      * Constructor
      *
      * @param revnum revision number
      */
-    Revision (const svn_revnum_t revnum);
+    Revision(const svn_revnum_t revnum);    //krazy:exclude=explicit
 
     /**
      * Constructor
      * @param revnum a revision number
      * @param revstring a revision string
      *
-     * The revision string MUST uppercase, it may some of "HEAD", "BASE", "WORKING", "COMMITED", "PREV",
-     * or a date in form {YYYY-MM-DD}.
+     * The revision string MUST uppercase, it may some of "WORKING", "BASE", "START", "PREV",
+     * a svn revision number/range or a date in form {YYYY-MM-DD}.
      */
-    Revision (const int revnum, const QString&revstring);
+    Revision(const int revnum, const QString &revstring);
 
     /**
      * Constructor
      * @param revstring a revision string
      *
-     * The revision string MUST uppercase, it may some of "HEAD", "BASE", "WORKING", "COMMITED", "PREV",
-     * or a date in form {YYYY-MM-DD}.
+     * The revision string MUST uppercase, it may some of "WORKING", "BASE", "START", "PREV",
+     * a svn revision number/range or a date in form {YYYY-MM-DD}.
      */
-    Revision (const QString&revstring);
+    Revision(const QString &revstring);    //krazy:exclude=explicit
 
     /**
      * Constructor
      *
      * @param kind
      */
-    Revision (const svn_opt_revision_kind kind = svn_opt_revision_unspecified);
+    Revision(const svn_opt_revision_kind kind = svn_opt_revision_unspecified);    //krazy:exclude=explicit
 
     /**
      * Constructor
@@ -143,58 +144,58 @@ namespace svn
      * @param dateTime DateTime wrapper for apr_time_t
      * @todo change it to referenced parameter (requires interface upgrade of lib)
      */
-    Revision (const DateTime dateTime);
+    Revision(const DateTime dateTime);    //krazy:exclude=explicit
     /**
      * Constructor
      *
      * @param dateTime QDateTime type
      */
-    Revision (const QDateTime&dateTime);
+    Revision(const QDateTime &dateTime);    //krazy:exclude=explicit
 
     /**
      * Copy constructor
      *
      * @param revision Source
      */
-    Revision (const Revision & revision);
+    Revision(const Revision &revision);    //krazy:exclude=explicit
 
     /**
      * @return revision information
      */
     const svn_opt_revision_t *
-    revision () const;
+    revision() const;
 
     /**
      * @see revision (). Same function
      * but with operator overloading
      */
-    operator svn_opt_revision_t * ()
+    operator svn_opt_revision_t *()
     {
-      return &m_revision;
+        return &m_revision;
     }
 
     /**
      * @see revision (). Same function
      * but with operator overloading
      */
-     operator const svn_opt_revision_t*()const
+    operator const svn_opt_revision_t *()const
     {
-      return &m_revision;
+        return &m_revision;
     }
 
     /**
      * @return revision numver
      */
     svn_revnum_t
-    revnum () const;
+    revnum() const;
 
     /**
      * @return revision kind
      */
     svn_opt_revision_kind
-    kind () const;
+    kind() const;
 
-    operator QString ()const;
+    operator QString()const;
     QString toString()const;
 
     bool isRemote()const;
@@ -204,9 +205,9 @@ namespace svn
      * @return valid date if kind is Revision::DATE
      */
     apr_time_t
-    date () const;
+    date() const;
 
-    bool operator==(const Revision&)const;
+    bool operator==(const Revision &)const;
     bool operator!=(const svn_opt_revision_kind)const;
     bool operator==(const svn_opt_revision_kind)const;
     bool operator==(int)const;
@@ -221,12 +222,12 @@ namespace svn
      * @param what a simple revision string (not s:e but s)
      * @return object itself
      */
-    Revision& operator=(const QString&what);
+    Revision &operator=(const QString &what);
 
-  };
+};
 }
 
-inline QTextStream& operator<<(QTextStream&s,svn::Revision&r)
+inline QTextStream &operator<<(QTextStream &s, svn::Revision &r)
 {
     s << r.toString();
     return s;

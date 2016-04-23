@@ -18,30 +18,43 @@
  #   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.         #
  ####
 
-INCLUDE_DIRECTORIES(${CMAKE_BINARY_DIR}/src/svnqt
-${CMAKE_BINARY_DIR}/src/ksvnwidgets)
+include_directories(
+    ${CMAKE_BINARY_DIR}/src/svnqt
+    ${CMAKE_BINARY_DIR}/src/ksvnwidgets
+)
 
-SET(kiosvn_src kiosvn.cpp kiolistener.cpp kiobytestream.cpp ../ksvnwidgets/pwstorage.cpp)
-FILE(GLOB hdr RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "*.h")
+set(kiosvn_src
+    kiosvn.cpp
+    kiolistener.cpp
+    kiobytestream.cpp
+    ../ksvnwidgets/pwstorage.cpp
+)
+set(kiosvn_hdr
+    kio_macros.h
+    kiosvn.h
+    kiolistener.h
+    kiobytestream.h
+    ../ksvnwidgets/pwstorage.h
+)
 qt4_add_dbus_interfaces( kiosvn_src ../kdesvnd/org.kde.kdesvnd.xml )
 
-KDE_ADD_KPART(kio_ksvn ${kiosvn_src} ${hdr})
+kde4_add_plugin(kio_ksvn ${kiosvn_src} ${kiosvn_hdr})
 
-TARGET_LINK_LIBRARIES(kio_ksvn
-    ${svnqt-name}
+target_link_libraries(kio_ksvn
+    svnqt
     kdesvnhelpers
     kdesvncfgreader
     ${KDE4_KIO_LIBS}
 )
 
-SET_TARGET_PROPERTIES(kio_ksvn
+set_target_properties(kio_ksvn
     PROPERTIES
-    LINK_FLAG "${LINK_NO_UNDEFINED}  ${_BASE_LDADD}")
+    LINK_FLAG "${LINK_NO_UNDEFINED}")
 
-INSTALL(TARGETS kio_ksvn
+install(TARGETS kio_ksvn
     LIBRARY DESTINATION ${PLUGIN_INSTALL_DIR} )
 
-FILE(GLOB PROTFILES *.protocol)
+file(GLOB PROTFILES *.protocol)
 
-INSTALL(FILES ${PROTFILES}
+install(FILES ${PROTFILES}
     DESTINATION  ${SERVICES_INSTALL_DIR} )

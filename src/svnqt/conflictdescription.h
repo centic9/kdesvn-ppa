@@ -26,13 +26,14 @@
 
 struct svn_wc_conflict_description_t;
 
-#include "svnqt/pool.h"
-#include "svnqt/svnqt_defines.h"
+#include <svnqt/pool.h>
+#include <svnqt/svnqt_defines.h>
 #include <svn_types.h>
 
-#include <qstring.h>
+#include <QString>
 
-namespace svn {
+namespace svn
+{
 
 /** Wrapper for svn_wc_conflict_description_t
  * does nothing when build against subversion prior 1.5
@@ -60,8 +61,7 @@ public:
         ConflictAdd,
         ConflictDelete
     };
-    ConflictDescription();
-    ConflictDescription(const svn_wc_conflict_description_t*);
+    explicit ConflictDescription(const svn_wc_conflict_description_t * = NULL);
     ~ConflictDescription();
 
     ConflictAction action() const;
@@ -69,17 +69,17 @@ public:
     ConflictReason reason() const;
     svn_node_kind_t nodeKind() const;
     bool binary() const;
-    const QString& baseFile() const;
-    const QString& theirFile() const;
-    const QString& propertyName() const;
-    const QString& Path() const;
-    const QString& myFile() const;
-    const QString& mimeType() const;
-    const QString& mergedFile() const;
+    const QString &baseFile() const;
+    const QString &theirFile() const;
+    const QString &propertyName() const;
+    const QString &Path() const;
+    const QString &myFile() const;
+    const QString &mimeType() const;
+    const QString &mergedFile() const;
 
 protected:
     //! don't use it.
-    ConflictDescription(const ConflictDescription&);
+    ConflictDescription(const ConflictDescription &);
     void init();
 protected:
     Pool m_pool;

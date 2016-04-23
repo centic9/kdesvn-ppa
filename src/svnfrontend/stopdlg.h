@@ -33,8 +33,6 @@
 #include <QLabel>
 
 class QTimer;
-
-class CContextListener;
 class QLabel;
 class QProgressBar;
 class KTextBrowser;
@@ -44,42 +42,42 @@ class KTextBrowser;
 */
 class StopDlg : public KDialog
 {
-Q_OBJECT
+    Q_OBJECT
 public:
-    StopDlg(QObject*,QWidget *parent = 0, const char *name = 0,const QString&caption=QString(),const QString&text=QString());
+    StopDlg(QObject *listener, QWidget *parent, const QString &caption, const QString &text);
     virtual ~StopDlg();
 
     bool cancelld();
 
 protected:
-    QObject*m_Context;
+    QObject *m_Context;
     int m_MinDuration;
     bool mCancelled;
-    QTimer * mShowTimer;
+    QTimer *mShowTimer;
     QString mCancelText;
-    bool mShown,mWait;
-    QLabel*mLabel;
-    QProgressBar*m_ProgressBar;
-    QProgressBar*m_NetBar;
+    bool mShown, mWait;
+    QLabel *mLabel;
+    QProgressBar *m_ProgressBar;
+    QProgressBar *m_NetBar;
     bool m_BarShown;
     bool m_netBarShown;
     QTime m_StopTick;
-    KTextBrowser*m_LogWindow;
-    QVBoxLayout*layout;
+    KTextBrowser *m_LogWindow;
+    QVBoxLayout *layout;
 
     QString m_lastLog;
     unsigned int m_lastLogLines;
-    CursorStack * cstack;
+    CursorStack *cstack;
 
-    virtual void showEvent(QShowEvent*);
-    virtual void hideEvent(QHideEvent*);
+    virtual void showEvent(QShowEvent *);
+    virtual void hideEvent(QHideEvent *);
 
-    QWidget*m_mainWidget;
+    QWidget *m_mainWidget;
 
 public slots:
     virtual void slotTick();
     virtual void slotWait(bool);
-    virtual void slotExtraMessage(const QString&);
+    virtual void slotExtraMessage(const QString &);
 
 protected slots:
     virtual void slotAutoShow();
@@ -87,25 +85,6 @@ protected slots:
     virtual void slotNetProgres(long long int, long long int);
 signals:
     void sigCancel(bool how);
-};
-
-class StopSimpleDlg:public StopDlg
-{
-    Q_OBJECT
-public:
-    StopSimpleDlg(QWidget *parent = 0, const char *name = 0,const QString&caption=QString(),const QString&text=QString());
-    virtual ~StopSimpleDlg(){}
-
-    bool isCanceld()const{return cancelld;}
-
-public slots:
-    virtual void makeCancel();
-
-protected slots:
-    virtual void slotSimpleCancel(bool);
-
-protected:
-    bool cancelld;
 };
 
 #endif

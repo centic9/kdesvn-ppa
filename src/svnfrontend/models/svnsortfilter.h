@@ -24,22 +24,22 @@
 
 #include "svnitemmodelfwd.h"
 
-class SvnSortFilterProxy:public QSortFilterProxyModel
+class SvnSortFilterProxy: public QSortFilterProxyModel
 {
     Q_OBJECT
 public:
-    SvnSortFilterProxy(QObject *parent = 0);
+    explicit SvnSortFilterProxy(QObject *parent = 0);
     virtual ~SvnSortFilterProxy();
 
     virtual bool hasChildren(const QModelIndex &parent = QModelIndex()) const;
-    virtual void setSourceSvnModel(SvnItemModel* sourceModel);
-    virtual void sort(int column,Qt::SortOrder order = Qt::AscendingOrder);
+    virtual void setSourceSvnModel(SvnItemModel *sourceModel);
+    virtual void sort(int column, Qt::SortOrder order = Qt::AscendingOrder);
 
     enum ShowType {
         None = 0x0,
         Dir  = 1,
         File = 2,
-        All = Dir|File
+        All = Dir | File
     };
 
     Q_DECLARE_FLAGS(TypeFlag, ShowType)
@@ -51,22 +51,13 @@ public:
     }
 
 protected:
-    virtual bool lessThan(const QModelIndex & left,const QModelIndex & right)const;
-    virtual bool filterAcceptsRow(int source_row, const QModelIndex & source_parent )const;
+    virtual bool lessThan(const QModelIndex &left, const QModelIndex &right)const;
+    virtual bool filterAcceptsRow(int source_row, const QModelIndex &source_parent)const;
 
-    SvnItemModel*m_sourceModel;
+    SvnItemModel *m_sourceModel;
     Qt::SortOrder m_order;
     svnmodel::ItemTypeFlag m_ShowFilter;
-
-#if QT_VERSION<0x040500
-    int m_SortColumn;
-    int sortColumn()const
-    {
-        return m_SortColumn;
-    }
-#endif
 };
 
 #endif
-
 

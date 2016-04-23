@@ -1,4 +1,4 @@
-/* 
+/*
  * Port for usage with qt-framework and development for kdesvn
  * Copyright (C) 2005-2009 by Rajko Albrecht (ral@alwins-world.de)
  * http://kdesvn.alwins-world.de
@@ -6,6 +6,7 @@
 /*
  * ====================================================================
  * Copyright (c) 2002-2005 The RapidSvn Group.  All rights reserved.
+ * dev@rapidsvn.tigris.org
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -32,55 +33,54 @@
 #define SVNQT_POOL_H
 
 // subversion api
-#include "svn_pools.h"
-
+#include <svn_pools.h>
 
 namespace svn
 {
-  /**
-   * Class for encapsulation of apr/subversion pools
-   */
-  class Pool
-  {
-  public:
+/**
+ * Class for encapsulation of apr/subversion pools
+ */
+class Pool
+{
+public:
     /**
      * creates a subpool new pool to an existing pool
      *
      * @param parent NULL -> global pool
      */
-    Pool (apr_pool_t * parent = (apr_pool_t *)0);
+    Pool(apr_pool_t *parent = (apr_pool_t *)0);    //krazy:exclude=explicit
 
-    virtual ~ Pool ();
+    virtual ~ Pool();
 
     /**
      * @return apr handle to the pool
      */
     apr_pool_t *
-    pool () const;
+    pool() const;
 
     /**
      * operator to return apr handle to the pool
      */
-    operator apr_pool_t * () const
+    operator apr_pool_t *() const
     {
-      return m_pool;
+        return m_pool;
     }
 
     /**
      * release pool and create a new one
      */
-    void renew ();
-  private:
-    apr_pool_t * m_parent;
-    apr_pool_t * m_pool;
+    void renew();
+private:
+    apr_pool_t *m_parent;
+    apr_pool_t *m_pool;
 
-    Pool& operator=(const Pool&);
+    Pool &operator=(const Pool &);
 
-    Pool (const Pool &);
+    Pool(const Pool &);
 
     static bool s_initialized;
-    static apr_pool_t * pool_create (apr_pool_t * parent);
-  };
+    static apr_pool_t *pool_create(apr_pool_t *parent);
+};
 }
 
 #endif

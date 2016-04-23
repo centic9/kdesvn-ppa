@@ -21,17 +21,16 @@
 #ifndef COMMITMODELFWD_H
 #define COMMITMODELFWD_H
 
-#include "src/svnqt/shared_pointer.h"
-
-#include <QList>
+#include <QSharedPointer>
+#include <QVector>
 
 class CommitActionEntry;
 class CommitModelNode;
 
-typedef svn::SharedPointer<CommitActionEntry> CommitActionEntryPtr;
-typedef svn::SharedPointer<CommitModelNode> CommitModelNodePtr;
+typedef QSharedPointer<CommitActionEntry> CommitActionEntryPtr;
+typedef QSharedPointer<CommitModelNode> CommitModelNodePtr;
 
-typedef QList<CommitActionEntry> CommitActionEntries;
-typedef QList<CommitModelNodePtr> CommitModelNodeList;
+typedef QVector<CommitActionEntry> CommitActionEntries;
+typedef QVector<CommitModelNodePtr> CommitModelNodeList;
 
 #endif
