@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Debian KDE Extras Team <pkg-kde-extras@lists.alioth.debian.org>
 Uploaders: Michael Biebl <biebl@debian.org>
 Build-Depends: cmake (>= 2.8.12),
-               debhelper (>= 9.20160114),
+               debhelper (>= 9.20131227),
                gettext,
                kdelibs5-dev (>= 4:4.9.0),
                libssl-dev (>= 0.9.8a),
