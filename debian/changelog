@@ -1,3 +1,9 @@
+kdesvn (1.7.0-2ubuntu0~ppa3) trusty; urgency=medium
+
+  * Try with different dependency of debhelper.
+
+ -- Dominik Stadler (Ubuntu key) <dominik.stadler@gmx.at>  Sun, 24 Apr 2016 18:44:00 +0200
+
 kdesvn (1.7.0-2ubuntu0~ppa2) trusty; urgency=medium
 
   * Disable custom dh_strip as this is not available yet.
