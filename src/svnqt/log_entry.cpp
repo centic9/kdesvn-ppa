@@ -32,12 +32,13 @@
 #include "log_entry.h"
 #include "pool.h"
 #include "stringarray.h"
+#include "helper.h"
 
 // subversion api
-#include <svn_time.h>
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 5)) || (SVN_VER_MAJOR > 1)
-#include <svn_compat.h>
-#endif
+#include "svn_time.h"
+#include "svn_compat.h"
+
+#include <QDataStream>
 
 namespace svn
 {
@@ -92,7 +93,6 @@ LogEntry::LogEntry()
 {
 }
 
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 5)) || (SVN_VER_MAJOR > 1)
 LogEntry::LogEntry(svn_log_entry_t *log_entry, const StringArray &excludeList)
     : revision(-1), date(0)
 {
@@ -100,15 +100,21 @@ LogEntry::LogEntry(svn_log_entry_t *log_entry, const StringArray &excludeList)
     const char *author_;
     const char *date_;
     const char *message_;
+    // TODO remove this obsolete call with own method
     svn_compat_log_revprops_out(&author_, &date_, &message_, log_entry->revprops);
 
     author = author_ == 0 ? QString() : QString::fromUtf8(author_);
     message = message_ == 0 ? QString() : QString::fromUtf8(message_);
-    setDate(date_);
+    apr_time_t apr_time = 0;
+    if (date_) {
+        svn_error_t *err = svn_time_from_cstring(&apr_time, date_, pool);
+        svn_error_clear(err); // clear possible error
+    }
+    date = apr_time;
     revision = log_entry->revision;
     if (log_entry->changed_paths) {
         bool blocked = false;
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 6)) || (SVN_VER_MAJOR > 1)
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,6,0)
         for (apr_hash_index_t *hi = apr_hash_first(pool, log_entry->changed_paths2);
 #else
         for (apr_hash_index_t *hi = apr_hash_first(pool, log_entry->changed_paths);
@@ -119,13 +125,13 @@ LogEntry::LogEntry(svn_log_entry_t *log_entry, const StringArray &excludeList)
             void *val;
             blocked = false;
             apr_hash_this(hi, &pv, NULL, &val);
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 6)) || (SVN_VER_MAJOR > 1)
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,6,0)
             svn_log_changed_path2_t *log_item = reinterpret_cast<svn_log_changed_path2_t *>(val);
 #else
             svn_log_changed_path_t *log_item = reinterpret_cast<svn_log_changed_path_t *>(val);
 #endif
             const char *path = reinterpret_cast<const char *>(pv);
-            QString _p(path);
+            QString _p(QString::fromUtf8(path));
             for (int _exnr = 0; _exnr < excludeList.size(); ++_exnr) {
                 if (_p.startsWith(excludeList[_exnr])) {
                     blocked = true;
@@ -138,34 +144,8 @@ LogEntry::LogEntry(svn_log_entry_t *log_entry, const StringArray &excludeList)
         }
     }
 }
-#endif
-
-LogEntry::LogEntry(
-    const svn_revnum_t revision_,
-    const char *author_,
-    const char *date_,
-    const char *message_)
-{
-    setDate(date_);
-
-    revision = revision_;
-    author = author_ == 0 ? QString() : QString::fromUtf8(author_);
-    message = message_ == 0 ? QString() : QString::fromUtf8(message_);
 }
 
-void LogEntry::setDate(const char *date_)
-{
-    apr_time_t date__ = 0;
-    if (date_ != 0) {
-        Pool pool;
-
-        if (svn_time_from_cstring(&date__, date_, pool) != 0) {
-            date__ = 0;
-        }
-    }
-    date = date__;
-}
-}
 
 SVNQT_EXPORT QDataStream &operator<<(QDataStream &s, const svn::LogEntry &r)
 {

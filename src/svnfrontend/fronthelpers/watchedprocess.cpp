@@ -19,8 +19,7 @@
  ***************************************************************************/
 #include "watchedprocess.h"
 
-#include <kio/netaccess.h>
-
+#include <QDir>
 #include <QList>
 #include <QString>
 
@@ -34,10 +33,10 @@ public:
     {
         QStringList::iterator it2;
         for (it2 = _tempFiles.begin(); it2 != _tempFiles.end(); ++it2) {
-            KIO::NetAccess::del((*it2), 0);
+            QFile::remove(*it2);
         }
         for (it2 = _tempDirs.begin(); it2 != _tempDirs.end(); ++it2) {
-            KIO::NetAccess::del((*it2), 0);
+            QDir(*it2).removeRecursively();
         }
     }
 

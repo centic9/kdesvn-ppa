@@ -32,6 +32,7 @@
 #ifndef SVNQT_PATH_H
 #define SVNQT_PATH_H
 
+#include <QUrl>
 #include <QString>
 #include <svnqt/svnqt_defines.h>
 #include <svnqt/svnqttypes.h>
@@ -62,14 +63,7 @@ public:
      * @param path Path string - when url this should NOT hold revision as @ parameter!!!!! (will filtered out)
      */
     Path(const QString &path = QString());    //krazy:exclude=explicit
-
-    /**
-     * Constructor
-     *
-     * @see Path::Path (const QString &)
-     * @param path Path string - when url this should NOT hold revision as @ parameter!!!!! (will filtered out)
-     */
-    Path(const char *path);    //krazy:exclude=explicit
+    Path(const QUrl &url);    //krazy:exclude=explicit
 
     /**
      * Copy constructor
@@ -77,6 +71,8 @@ public:
      * @param path Path to be copied
      */
     Path(const Path &path);
+
+    ~Path() = default;
 
     /**
      * Assignment operator
@@ -90,16 +86,6 @@ public:
     path() const;
 
     /**
-     * @return Path string
-     */
-    operator const QString &()const;
-
-    /**
-     * @return Path as pretty url
-     */
-    QString prettyPath()const;
-
-    /**
      * @return Path string as c string
      */
     const QByteArray cstr() const;
@@ -111,58 +97,21 @@ public:
      *
      * @return true if there is a path set
      */
-    bool
-    isset() const;
+    bool isset() const;
 
     /**
      * adds a new URL component to the path
      *
      * @param component new component to add
      */
-    void
-    addComponent(const char *component);
-
-    /**
-     * adds a new URL component to the path
-     *
-     * @param component new component to add
-     */
-    void
-    addComponent(const QString &component);
+    void addComponent(const QString &component);
 
     /** Reduce path to its parent folder.
      * If the path length is 1 (eg., only "/") it will cleared so
      * path length will get zero.
      * @sa svn_path_remove_component
      */
-    void
-    removeLast();
-
-    /**
-     * split path in its components
-     *
-     * @param dirpath directory/path component
-     * @param basename filename
-     */
-    void
-    split(QString &dirpath, QString &basename) const;
-
-    /**
-     * split path in its components including
-     * file extension
-     *
-     * @param dir directory component
-     * @param filename filename
-     * @param ext extension (including leading dot ".")
-     */
-    void
-    split(QString &dir, QString &filename, QString &ext) const;
-
-    /**
-     * returns the temporary directory
-     */
-    static Path
-    getTempDir();
+    void removeLast();
 
     /** Parse a string for a peg revision
      * @param pathorurl url to parse

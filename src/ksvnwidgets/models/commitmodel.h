@@ -23,7 +23,7 @@
 
 #include "commitmodelfwd.h"
 #include "commitmodelhelper.h"
-#include "src/svnqt/svnqttypes.h"
+#include "svnqt/svnqttypes.h"
 
 #include <QAbstractListModel>
 #include <QScopedPointer>
@@ -32,12 +32,12 @@
 class CommitModel: public QAbstractItemModel
 {
     Q_OBJECT
+protected:
+    explicit CommitModel(const CommitActionEntries &, const CommitActionEntries &, QObject *parent = 0);
+    void setCommitData(const CommitActionEntries &, const CommitActionEntries &);
 public:
     explicit CommitModel(const svn::CommitItemList &, QObject *parent = 0);
-    explicit CommitModel(const CommitActionEntries &, const CommitActionEntries &, QObject *parent = 0);
-
     void setCommitData(const svn::CommitItemList &);
-    void setCommitData(const CommitActionEntries &, const CommitActionEntries &);
 
     virtual ~CommitModel();
 

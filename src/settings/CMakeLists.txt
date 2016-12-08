@@ -18,11 +18,14 @@
  #   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.         #
  ####
 
-kde4_add_kcfg_files(cfgsrc
+kconfig_add_kcfg_files(cfgsrc
     kdesvnsettings.kcfgc)
 add_library(kdesvncfgreader STATIC ${cfgsrc})
+target_link_libraries(kdesvncfgreader
+    KF5::ConfigGui
+)
 
-kde4_add_ui_files(settings_ui_sources
+ki18n_wrap_ui(settings_ui_sources
     cmdexecsettings.ui
     diffmergesettings.ui
     dispcolor_settings.ui
@@ -46,7 +49,17 @@ file(GLOB hdr RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "*.h")
 
 add_library(settingsdlgs STATIC ${settings_ui_sources} ${settings_sources} ${hdr})
 target_link_libraries(settingsdlgs
-    kdesvncfgreader
+    PRIVATE
+        kdesvncfgreader
+    PUBLIC
+        KF5::WidgetsAddons
+        KF5::Completion
+        KF5::I18n
+)
+include_directories(settingsdlgs
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/../
+        ${CMAKE_CURRENT_BINARY_DIR}/../
 )
 
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/kdesvn_part.kcfg DESTINATION ${KCFG_INSTALL_DIR})

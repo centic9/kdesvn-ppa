@@ -20,24 +20,20 @@
 #ifndef AUTHDIALOGWIDGET_H
 #define AUTHDIALOGWIDGET_H
 
-#include "src/ksvnwidgets/ui_authdlg.h"
-#include <qstring.h>
+#include "ui_authdlg.h"
+#include <QString>
 #include <QWidget>
 
 class AuthDialogWidget: public QWidget, public Ui::AuthDialogWidget
 {
     Q_OBJECT
 public:
-    AuthDialogWidget(const QString &realm, const QString &user, QWidget *parent = 0);
+    AuthDialogWidget(const QString &realm, const QString &user, QWidget *parent = nullptr);
     virtual ~AuthDialogWidget() {}
 
     const QString Username()const;
     const QString Password()const;
     bool maySave()const;
-protected slots:
-    virtual void slotHelp();
-protected:
-    QString curPass;
 };
 
 #endif

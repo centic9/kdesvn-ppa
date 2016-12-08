@@ -21,9 +21,8 @@
 #define CHECKOUTINFO_IMPL_H
 
 #include "ui_checkoutinfo.h"
-#include "src/svnqt/revision.h"
-#include "src/svnqt/svnqttypes.h"
-#include "kurl.h"
+#include "svnqt/revision.h"
+#include "svnqt/svnqttypes.h"
 
 class CheckoutInfo_impl: public QWidget, public Ui::CheckoutInfo
 {
@@ -33,12 +32,12 @@ public:
     virtual ~CheckoutInfo_impl();
 
     svn::Revision toRevision() const;
-    QString reposURL() const;
+    QUrl reposURL() const;
     QString targetDir() const;
 
     bool overwrite() const;
     svn::Depth getDepth() const;
-    void setStartUrl(const QString &);
+    void setStartUrl(const QUrl &);
 
     void disableForce(bool how);
     void disableTargetDir(bool how);
@@ -47,9 +46,13 @@ public:
     void disableExternals(bool how);
     bool openAfterJob() const;
     void disableRange(bool how);
-    void setTargetUrl(const QString &);
+    void setTargetUrl(const QUrl &);
     bool ignoreExternals() const;
-    void hideDepth(bool hide, bool overwriteAsRecurse);
+    void hideDepth(bool hide);
+    void overwriteAsRecursive();
+    void hideOverwrite(bool hide);
+    void hideIgnoreKeywords(bool hide);
+    bool ignoreKeywords() const;
 protected slots:
     void urlChanged(const QString &);
 };

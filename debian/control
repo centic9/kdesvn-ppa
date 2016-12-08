@@ -4,13 +4,30 @@ Priority: optional
 Maintainer: Debian KDE Extras Team <pkg-kde-extras@lists.alioth.debian.org>
 Uploaders: Michael Biebl <biebl@debian.org>
 Build-Depends: cmake (>= 2.8.12),
-               debhelper (>= 9.20160114),
+               debhelper (>= 10),
+               extra-cmake-modules (>= 5.10.0),
                gettext,
-               kdelibs5-dev (>= 4:4.9.0),
+               libkf5bookmarks-dev,
+               libkf5config-dev,
+               libkf5configwidgets-dev,
+               libkf5coreaddons-dev,
+               libkf5dbusaddons-dev,
+               libkf5doctools-dev,
+               libkf5i18n-dev,
+               libkf5iconthemes-dev,
+               libkf5itemviews-dev,
+               libkf5kio-dev,
+               libkf5notifications-dev,
+               libkf5parts-dev (>= 5.25.0),
+               libkf5service-dev,
+               libkf5texteditor-dev,
+               libkf5wallet-dev,
+               libkf5widgetsaddons-dev,
                libssl-dev (>= 0.9.8a),
                libsvn-dev (>= 1.6.0),
-               pkg-kde-tools (>= 0.9)
-Standards-Version: 3.9.7
+               pkg-kde-tools (>= 0.9),
+               qtbase5-dev
+Standards-Version: 3.9.8
 Vcs-Svn: svn://anonscm.debian.org/pkg-kde/kde-extras/kdesvn/trunk/
 Vcs-Browser: https://anonscm.debian.org/viewvc/pkg-kde/kde-extras/kdesvn/trunk/
 Homepage: https://projects.kde.org/projects/extragear/sdk/kdesvn
@@ -18,7 +35,7 @@ Homepage: https://projects.kde.org/projects/extragear/sdk/kdesvn
 Package: kdesvn
 Architecture: any
 Depends: kdesvn-kio-plugins (= ${binary:Version}),
-         libqt4-sql-sqlite,
+         libqt5sql5-sqlite,
          ${misc:Depends},
          ${shlibs:Depends}
 Recommends: graphviz, kompare

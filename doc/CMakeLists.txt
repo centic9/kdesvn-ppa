@@ -1,5 +1,6 @@
 add_subdirectory(nl)
-add_subdirectory(en_US)
 add_subdirectory(uk)
+add_subdirectory(de)
 add_subdirectory(pt_BR)
 add_subdirectory(sv)
+add_subdirectory(en)

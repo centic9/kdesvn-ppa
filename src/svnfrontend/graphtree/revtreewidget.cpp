@@ -19,9 +19,9 @@
  ***************************************************************************/
 #include "revtreewidget.h"
 #include "revgraphview.h"
-#include "src/settings/kdesvnsettings.h"
+#include "settings/kdesvnsettings.h"
 
-#include <ktextbrowser.h>
+#include <QTextBrowser>
 
 #include <QVariant>
 #include <QSplitter>
@@ -36,14 +36,14 @@
  *  Constructs a RevTreeWidget as a child of 'parent', with the
  *  name 'name' and widget flags set to 'f'.
  */
-RevTreeWidget::RevTreeWidget(QObject *lt, const svn::ClientP &cl, QWidget *parent)
+RevTreeWidget::RevTreeWidget(const svn::ClientP &cl, QWidget *parent)
     : QWidget(parent)
 {
     RevTreeWidgetLayout = new QVBoxLayout(this);//, 11, 6, "RevTreeWidgetLayout");
 
     m_Splitter = new QSplitter(Qt::Vertical, this);
 
-    m_RevGraphView = new RevGraphView(lt, cl, m_Splitter);
+    m_RevGraphView = new RevGraphView(cl, m_Splitter);
     m_RevGraphView->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
 
     connect(m_RevGraphView, SIGNAL(dispDetails(QString)), this, SLOT(setDetailText(QString)));
@@ -63,9 +63,9 @@ RevTreeWidget::RevTreeWidget(QObject *lt, const svn::ClientP &cl, QWidget *paren
             SIGNAL(makeCat(svn::Revision,QString,QString,svn::Revision,QWidget*))
            );
 
-    m_Detailstext = new KTextBrowser(m_Splitter);
+    m_Detailstext = new QTextBrowser(m_Splitter);
     m_Detailstext->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    //m_Detailstext->setResizePolicy( KTextBrowser::Manual );
+    //m_Detailstext->setResizePolicy( QTextBrowser::Manual );
     RevTreeWidgetLayout->addWidget(m_Splitter);
     resize(QSize(600, 480).expandedTo(minimumSizeHint()));
     QList<int> list = Kdesvnsettings::tree_detail_height();
@@ -83,7 +83,7 @@ RevTreeWidget::~RevTreeWidget()
     QList<int> list = m_Splitter->sizes();
     if (list.count() == 2) {
         Kdesvnsettings::setTree_detail_height(list);
-        Kdesvnsettings::self()->writeConfig();
+        Kdesvnsettings::self()->save();
     }
 }
 

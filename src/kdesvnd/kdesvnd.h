@@ -21,32 +21,32 @@
 #ifndef kdesvnd_H
 #define kdesvnd_H
 
-#include "src/ksvnwidgets/jobviewserverinterface.h"
+#include "ksvnwidgets/jobviewserverinterface.h"
 
-#include <qstringlist.h>
-#include <qstring.h>
-#include <kurl.h>
-#include <kdedmodule.h>
+#include <KDEDModule>
 #include <QDBusVariant>
-#include <kcomponentdata.h>
+#include <QString>
+#include <QStringList>
+#include <QUrl>
 
 class KdesvndListener;
 class KsvnJobView;
 
-class kdesvnd :  public KDEDModule
+class kdesvnd : public KDEDModule
 {
     Q_OBJECT
+    Q_CLASSINFO("D-Bus Interface", "org.kde.kdesvnd")
+
 public:
     kdesvnd(QObject *parent, const QList<QVariant> &);
     virtual ~kdesvnd();
 
 protected:
-    bool isWorkingCopy(const KUrl &url, QString &base);
-    bool isRepository(const KUrl &url);
-    static QString cleanUrl(const KUrl &url);
+    bool isWorkingCopy(const QUrl &url) const;
+    bool isRepository(const QUrl &url) const;
+    static QString cleanUrl(const QUrl &url);
     KdesvndListener *m_Listener;
-    QStringList getActionMenu(const KUrl::List &, bool toplevel);
-    KComponentData m_componentData;
+    QStringList getActionMenu(const QList<QUrl> &list, bool toplevel) const;
 
     org::kde::JobViewServer m_uiserver;
 
@@ -73,17 +73,17 @@ public Q_SLOTS:
     int get_sslaccept(const QString &, const QString &, const QString &, const QString &, const QString &, const QString &);
 
     // returns cert file or empty string
-    QString get_sslclientcertfile();
+    QString get_sslclientcertfile() const;
     // return a logmessage at pos 0, null-size list if cancel hit
-    QStringList get_logmsg();
+    QStringList get_logmsg() const;
 
     // return pw loaded from wallet if existent
     QString load_sslclientcertpw(const QString &realm);
     // return pw at pos 0, maysafe at pos 1, null-size if cancel hit.
     QStringList get_sslclientcertpw(const QString &);
-    QStringList getActionMenu(const KUrl::List &);
-    QStringList getTopLevelActionMenu(const KUrl::List &);
-    QStringList getSingleActionMenu(const QString &);
+    QStringList getActionMenu(const QStringList &urlList) const;
+    QStringList getTopLevelActionMenu(const QStringList &urlList) const;
+    QStringList getSingleActionMenu(const QString &) const;
 
     bool canceldKioOperation(qulonglong kioid);
     void maxTransferKioOperation(qulonglong kioid, qulonglong maxtransfer);

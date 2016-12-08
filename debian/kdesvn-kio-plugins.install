@@ -1,5 +1,5 @@
-usr/lib/kde4/kded_kdesvnd.so
-usr/lib/kde4/kio_ksvn.so
-usr/share/dbus-1/interfaces/org.kde.kdesvnd.xml
-usr/share/kde4/services/*.protocol
-usr/share/kde4/services/kded/
+usr/lib/*/qt5/plugins/kf5/kded/kdesvnd.so
+usr/lib/*/qt5/plugins/kio_ksvn.so
+usr/share/dbus-1/interfaces/kf5_org.kde.kdesvnd.xml
+usr/share/dbus-1/services/org.kde.kdesvnd.service
+usr/share/kservices5/*.protocol

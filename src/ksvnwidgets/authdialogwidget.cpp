@@ -18,16 +18,12 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.         *
  ***************************************************************************/
 #include "authdialogwidget.h"
-#include "src/settings/kdesvnsettings.h"
+#include "settings/kdesvnsettings.h"
 
-#include <kpassworddialog.h>
-#include <klineedit.h>
-#include <klocale.h>
-#include <qcheckbox.h>
-#include <qlabel.h>
+#include <KLocalizedString>
 
 AuthDialogWidget::AuthDialogWidget(const QString &realm, const QString &user, QWidget *parent)
-    : QWidget(parent), Ui::AuthDialogWidget(), curPass()
+    : QWidget(parent), Ui::AuthDialogWidget()
 {
     setupUi(this);
 
@@ -44,11 +40,7 @@ AuthDialogWidget::AuthDialogWidget(const QString &realm, const QString &user, QW
     }
 }
 
-void AuthDialogWidget::slotHelp()
-{
-}
-
-const QString AuthDialogWidget::Username()const
+const QString AuthDialogWidget::Username() const
 {
     return m_UsernameEdit->text();
 }
@@ -58,7 +50,7 @@ const QString AuthDialogWidget::Password() const
     return m_PasswordEdit->text();
 }
 
-bool AuthDialogWidget::maySave()const
+bool AuthDialogWidget::maySave() const
 {
     return m_StorePasswordButton->isChecked();
 }

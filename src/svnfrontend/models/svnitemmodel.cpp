@@ -22,18 +22,18 @@
 #include "svnitemnode.h"
 #include "svnactions.h"
 #include "getinfothread.h"
-#include "src/svnfrontend/maintreewidget.h"
-#include "src/settings/kdesvnsettings.h"
+#include "svnfrontend/maintreewidget.h"
+#include "settings/kdesvnsettings.h"
+#include "helpers/kdesvn_debug.h"
 
-#include "src/svnqt/status.h"
-#include "src/svnqt/client.h"
-#include "src/svnqt/path.h"
-#include "src/svnqt/svnqt_defines.h"
+#include "svnqt/status.h"
+#include "svnqt/client.h"
+#include "svnqt/path.h"
+#include "svnqt/svnqt_defines.h"
 
-#include <klocale.h>
-#include <kdebug.h>
-#include <kglobal.h>
-#include <kdirwatch.h>
+#include <KLocalizedString>
+#include <KDirWatch>
+#include <KUrlMimeData>
 
 #include <QItemSelectionModel>
 #include <QFileInfo>
@@ -99,9 +99,11 @@ public:
 
     bool MustCreateDir(const svn::Status &_Stat)const
     {
-        if (isRemoteAdded(_Stat) || _Stat.entry().isValid()) {
-            return _Stat.entry().kind() == svn_node_dir ||
-                   _Stat.entry().kind() == svn_node_unknown;
+        // keep in sync with SvnItem::isDir()
+        if (_Stat.entry().isValid() || isRemoteAdded(_Stat)) {
+          if (_Stat.entry().kind() != svn_node_unknown) {
+              return _Stat.entry().kind() == svn_node_dir;
+          }
         }
         /* must be a local file */
         QFileInfo f(_Stat.path());
@@ -213,7 +215,7 @@ bool SvnItemModel::filterIndex(const QModelIndex &parent, int childRow, svnmodel
         return false;
     }
     if (!node->NodeIsDir()) {
-        kDebug() << "Parent ist kein Dir" << endl;
+        qCDebug(KDESVN_LOG) << "Parent ist kein Dir" << endl;
         return false;
     }
     SvnItemModelNode *child = static_cast<SvnItemModelNodeDir *>(node)->child(childRow);
@@ -376,7 +378,7 @@ int SvnItemModel::checkDirs(const QString &_what, SvnItemModelNode *_parent)
         return checkUnversionedDirs(_parent);
     }
 #ifdef DEBUG_TIMER
-    kDebug() << "Time for getting entries: " << _counttime.elapsed();
+    qCDebug(KDESVN_LOG) << "Time for getting entries: " << _counttime.elapsed();
     _counttime.restart();
 #endif
     svn::StatusEntries neweritems;
@@ -385,7 +387,7 @@ int SvnItemModel::checkDirs(const QString &_what, SvnItemModelNode *_parent)
     svn::StatusEntries::iterator it = dlist.begin();
     SvnItemModelNode *node = 0;
     for (; it != dlist.end(); ++it) {
-        if ((*it)->path() == what || QString::compare((*it)->entry().url(), what) == 0) {
+        if ((*it)->path() == what || (*it)->entry().url().toString() == what) {
             if (!_parent) {
                 // toplevel item
                 beginInsertRows(m_Data->indexForNode(m_Data->m_rootNode), 0, 0);
@@ -406,7 +408,7 @@ int SvnItemModel::checkDirs(const QString &_what, SvnItemModelNode *_parent)
         node = _parent;
     }
 #ifdef DEBUG_TIMER
-    kDebug() << "Time finding parent node: " << _counttime.elapsed();
+    qCDebug(KDESVN_LOG) << "Time finding parent node: " << _counttime.elapsed();
 #endif
     insertDirs(node, dlist);
     return dlist.size();
@@ -414,7 +416,7 @@ int SvnItemModel::checkDirs(const QString &_what, SvnItemModelNode *_parent)
 
 void SvnItemModel::insertDirs(SvnItemModelNode *_parent, svn::StatusEntries &dlist)
 {
-    if (dlist.size() == 0) {
+    if (dlist.isEmpty()) {
         return;
     }
     QModelIndex ind = m_Data->indexForNode(_parent);
@@ -442,7 +444,7 @@ void SvnItemModel::insertDirs(SvnItemModelNode *_parent, svn::StatusEntries &dli
         }
         node->setStat((*it));
 #ifdef DEBUG_TIMER
-//        kDebug()<<"Time creating item: "<<_counttime.elapsed();
+//        qCDebug(KDESVN_LOG)<<"Time creating item: "<<_counttime.elapsed();
         _counttime.restart();
 #endif
         if (m_Data->m_Display->isWorkingCopy() && m_Data->m_DirWatch) {
@@ -453,12 +455,12 @@ void SvnItemModel::insertDirs(SvnItemModelNode *_parent, svn::StatusEntries &dli
             }
         }
 #ifdef DEBUG_TIMER
-//        kDebug()<<"Time add watch: "<<_counttime.elapsed();
+//        qCDebug(KDESVN_LOG)<<"Time add watch: "<<_counttime.elapsed();
         _counttime.restart();
 #endif
         parent->m_Children.append(node);
 #ifdef DEBUG_TIMER
-//        kDebug()<<"Time append node: "<<_counttime.elapsed();
+//        qCDebug(KDESVN_LOG)<<"Time append node: "<<_counttime.elapsed();
 #endif
     }
 #ifdef DEBUG_TIMER
@@ -466,7 +468,7 @@ void SvnItemModel::insertDirs(SvnItemModelNode *_parent, svn::StatusEntries &dli
 #endif
     endInsertRows();
 #ifdef DEBUG_TIMER
-//    kDebug()<<"Time append all node: "<<_counttime.elapsed();
+//    qCDebug(KDESVN_LOG)<<"Time append all node: "<<_counttime.elapsed();
 #endif
 }
 
@@ -476,7 +478,7 @@ bool SvnItemModel::canFetchMore(const QModelIndex &parent)const
         return false;
     }
     SvnItemModelNode *node = static_cast<SvnItemModelNode *>(parent.internalPointer());
-    return node->NodeHasChilds() && static_cast<SvnItemModelNodeDir *>(node)->childList().count() == 0;
+    return node->NodeHasChilds() && static_cast<SvnItemModelNodeDir *>(node)->childList().isEmpty();
 }
 
 void SvnItemModel::fetchMore(const QModelIndex &parent)
@@ -539,7 +541,7 @@ QStringList SvnItemModel::mimeTypes() const
            << QLatin1String("application/x-kde-urilist");
 }
 
-bool SvnItemModel::dropUrls(const KUrl::List &data, Qt::DropAction action, int row, int column, const QModelIndex &parent, bool intern)
+bool SvnItemModel::dropUrls(const QList<QUrl> &data, Qt::DropAction action, int row, int column, const QModelIndex &parent, bool intern)
 {
     Q_UNUSED(row);
     Q_UNUSED(column);
@@ -555,18 +557,21 @@ bool SvnItemModel::dropUrls(const KUrl::List &data, Qt::DropAction action, int r
 
 QMimeData *SvnItemModel::mimeData(const QModelIndexList &indexes)const
 {
-    KUrl::List urls;
+    QList<QUrl> urls;
     foreach (const QModelIndex &index, indexes) {
         if (index.column() == 0) {
             urls << m_Data->nodeForIndex(index)->kdeName(m_Data->m_Display->baseRevision());
         }
     }
-    QMimeData *data = new QMimeData();
-    KUrl::MetaDataMap metaMap;
+    QMimeData *mimeData = new QMimeData();
+    mimeData->setUrls(urls);
+
+    KUrlMimeData::MetaDataMap metaMap;
     metaMap["kdesvn-source"] = QLatin1Char('t');
     metaMap["kdesvn-id"] = uniqueIdentifier();
-    urls.populateMimeData(data, metaMap);
-    return data;
+    KUrlMimeData::setMetaData(metaMap, mimeData);
+
+    return mimeData;
 }
 
 void SvnItemModel::makeIgnore(const QModelIndex &index)
@@ -590,13 +595,13 @@ void SvnItemModel::makeIgnore(const QModelIndex &index)
 
 bool SvnItemModel::refreshItem(SvnItemModelNode *item)
 {
-    if (!item) {
+    if (!item || item == m_Data->m_rootNode) {
         return false;
     }
     try {
         item->setStat(m_Data->m_SvnActions->svnclient()->singleStatus(item->fullName(), false, m_Data->m_Display->baseRevision()));
     } catch (const svn::ClientException &e) {
-        item->setStat(svn::StatusPtr());
+        item->setStat(svn::StatusPtr(new svn::Status));
         return false;
     }
     return true;
@@ -613,7 +618,7 @@ bool SvnItemModel::refreshIndex(const QModelIndex &ind, bool sendSignal)
 
 SvnItemModelNode *SvnItemModel::findPath(const svn::Path &_p)
 {
-    QString ip = _p;
+    QString ip = _p.path();
     SvnItemModelNode *n1 = firstRootChild();
     if (n1) {
         if (n1->fullName().length() < ip.length()) {
@@ -646,7 +651,7 @@ void SvnItemModel::initDirWatch()
         connect(m_Data->m_DirWatch, SIGNAL(created(QString)), this, SLOT(slotCreated(QString)));
         connect(m_Data->m_DirWatch, SIGNAL(deleted(QString)), this, SLOT(slotDeleted(QString)));
         if (m_Data->m_DirWatch) {
-            m_Data->m_DirWatch->addDir(m_Data->m_Display->baseUri() + '/', KDirWatch::WatchDirOnly);
+            m_Data->m_DirWatch->addDir(m_Data->m_Display->baseUri() + QLatin1Char('/'), KDirWatch::WatchDirOnly);
             m_Data->m_DirWatch->startScan(true);
         }
     }
@@ -720,7 +725,7 @@ void SvnItemModel::checkAddNewItems(const QModelIndex &ind)
             ++it;
         }
     }
-    if (dlist.count() > 0) {
+    if (!dlist.isEmpty()) {
         insertDirs(n, dlist);
     }
 }
@@ -755,7 +760,7 @@ bool SvnItemModel::checkRootNode()
         m_Data->m_rootNode->setStat(m_Data->m_SvnActions->svnclient()->singleStatus(m_Data->m_Display->baseUri(),
                                                                                     false, m_Data->m_Display->baseRevision()));
     } catch (const svn::ClientException &e) {
-        m_Data->m_rootNode->setStat(svn::StatusPtr());
+        m_Data->m_rootNode->setStat(svn::StatusPtr(new svn::Status));
         emit clientException(e.msg());
         return false;
     }
@@ -770,8 +775,8 @@ bool SvnItemModel::refreshCurrentTree()
     }
     SvnItemModelNodeDir *_start = m_Data->m_rootNode;
     if (m_Data->m_Display->isWorkingCopy()) {
-        if (m_Data->m_rootNode->m_Children.size() > 0 && m_Data->m_rootNode->m_Children[0]->NodeIsDir()) {
-            _start = static_cast<SvnItemModelNodeDir *>(m_Data->m_rootNode->m_Children[0]);
+        if (!m_Data->m_rootNode->m_Children.isEmpty() && m_Data->m_rootNode->m_Children.at(0)->NodeIsDir()) {
+            _start = static_cast<SvnItemModelNodeDir *>(m_Data->m_rootNode->m_Children.at(0));
             refreshItem(_start);
         } else {
             return false;
@@ -800,7 +805,7 @@ bool SvnItemModel::refreshDirnode(SvnItemModelNodeDir *node, bool check_empty, b
     }
     QString what = (node != m_Data->m_rootNode) ? node->fullName() : m_Data->m_Display->baseUri();
 
-    if (node->m_Children.size() == 0 && !check_empty) {
+    if (node->m_Children.isEmpty() && !check_empty) {
         if (node->fullName() == m_Data->m_Display->baseUri()) {
             return refreshItem(node);
         }
@@ -863,7 +868,7 @@ bool SvnItemModel::refreshDirnode(SvnItemModelNodeDir *node, bool check_empty, b
     }
 
     // make sure that we do not read in the whole tree when just refreshing the current tree.
-    if (node->m_Children.size() > 0 && !notrec) {
+    if (!node->m_Children.isEmpty() && !notrec) {
         for (int i = 0; i < node->m_Children.size(); ++i) {
             if (node->m_Children[i]->NodeIsDir()) {
                 // both other parameters makes no sense at this point - defaults
@@ -873,7 +878,7 @@ bool SvnItemModel::refreshDirnode(SvnItemModelNodeDir *node, bool check_empty, b
     }
     // after so we don't recurse about it.
     insertDirs(node, dlist);
-    if (dlist.size() > 0) {
+    if (!dlist.isEmpty()) {
         itemsFetched(m_Data->indexForNode(node));
     }
     return true;
@@ -912,5 +917,5 @@ const QString &SvnItemModel::uniqueIdentifier()const
 
 void SvnItemModel::slotNotifyMessage(const QString &msg)
 {
-    kDebug() << msg;
+    qCDebug(KDESVN_LOG) << msg;
 }

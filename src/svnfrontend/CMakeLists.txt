@@ -19,31 +19,25 @@
  ####
 
 include_directories(${CMAKE_SOURCE_DIR}/src/svnfrontend/fronthelpers
-                    ${CMAKE_SOURCE_DIR}/src/svnfrontend/background
-                    ${CMAKE_SOURCE_DIR}/src/ksvnwidgets
-                    ${CMAKE_BINARY_DIR}/src/svnqt
-                    ${CMAKE_BINARY_DIR}/src/ksvnwidgets)
+                    ${CMAKE_SOURCE_DIR}/src/svnfrontend/background)
 
 set(svnfrontendsrc
     EditIgnorePattern.cpp
     EditIgnorePattern.h
-    blamedisplay_impl.cpp
+    blamedisplay.cpp
     ccontextlistener.cpp
     commandexec.cpp
     copymoveview_impl.cpp
-    createrepo_impl.cpp
+    createrepodlg.cpp
     database/dboverview.cpp
     database/dboverview.h
     database/dbsettings.cpp
     database/dbsettings.h
     dummydisplay.cpp
     dumprepo_impl.cpp
-    editpropswidget.cpp
-    fronthelpers/DialogStack.cpp
-    fronthelpers/DialogStack.h
+    editpropsdlg.cpp
     fronthelpers/checkoutinfo_impl.cpp
     fronthelpers/checkoutinfo_impl.h
-    fronthelpers/createdlg.h
     fronthelpers/cursorstack.h
     fronthelpers/fronthelpers.h
     fronthelpers/kmultilinedelegate.cpp
@@ -96,8 +90,6 @@ set(svnfrontendsrc
     models/svnsortfilter.h
     opencontextmenu.cpp
     propertiesdlg.cpp
-    setpropertywidget.cpp
-    setpropertywidget.h
     stopdlg.cpp
     svnactions.cpp
     svnitem.cpp
@@ -109,7 +101,7 @@ set(svnfrontendsrc
 set(svnfrontendui
     blamedisplay.ui
     copymoveview.ui
-    createrepo_dlg.ui
+    createrepodlg.ui
     database/dboverview.ui
     database/dbsettings.ui
     dumprepo_dlg.ui
@@ -121,14 +113,14 @@ set(svnfrontendui
     hotcopydlg.ui
     loaddmpdlg.ui
     merge_dlg.ui
-    setproperty.ui
+    propertiesdlg.ui
     svnlogdlg.ui
     treeWidget.ui
     )
 
 file(GLOB hdr RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "*.h")
 
-kde4_add_ui_files(frontend_ui_sources ${svnfrontendui})
+ki18n_wrap_ui(frontend_ui_sources ${svnfrontendui})
 
 
 add_subdirectory(background)
@@ -136,7 +128,16 @@ add_subdirectory(background)
 add_library(svnfrontend STATIC ${svnfrontendsrc} ${frontend_ui_sources} ${hdr})
 
 target_link_libraries(svnfrontend
-    ${QT_QTCORE_LIBRARY}
-    ksvnwidgets
-    svnqt
+    PRIVATE
+        KF5::IconThemes
+    PUBLIC
+        KF5::ItemViews
+        KF5::JobWidgets
+        KF5::Service
+        ksvnwidgets
+        svnqt
+)
+target_include_directories(svnfrontend
+    PUBLIC
+        ${CMAKE_CURRENT_BINARY_DIR}
 )

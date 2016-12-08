@@ -21,8 +21,8 @@
 #include "kdesvnd_listener.h"
 #include "kdesvnd.h"
 
-#include "src/settings/kdesvnsettings.h"
-#include "src/ksvnwidgets/pwstorage.h"
+#include "settings/kdesvnsettings.h"
+#include "ksvnwidgets/pwstorage.h"
 
 KdesvndListener::KdesvndListener(kdesvnd *p)
     : svn::ContextListener()
@@ -90,8 +90,8 @@ bool KdesvndListener::contextCancel()
 
 bool KdesvndListener::contextGetLogMessage(QString &msg, const svn::CommitItemList &)
 {
-    QStringList res = m_back->get_logmsg();
-    if (res.count() == 0) {
+    const QStringList res = m_back->get_logmsg();
+    if (res.isEmpty()) {
         return false;
     }
     msg = res[1];

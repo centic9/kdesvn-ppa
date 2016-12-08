@@ -88,19 +88,11 @@ class SVNQT_EXPORT LogEntry
 {
 public:
     LogEntry();
-
-    LogEntry(const svn_revnum_t revision,
-             const char *author,
-             const char *date,
-             const char *message);
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 5)) || (SVN_VER_MAJOR > 1)
-    LogEntry(svn_log_entry_t *, const StringArray &excludeList);
-#endif
-    void setDate(const char *date);
+    LogEntry(svn_log_entry_t *log_entry, const StringArray &excludeList);
 
     //! if -1 the entry is a fake entry and not real usable!
     qlonglong revision;
-    qlonglong date;
+    qlonglong date; // apr_time
     QString author;
     QString message;
     LogChangePathEntries changedPaths;

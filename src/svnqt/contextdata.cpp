@@ -22,6 +22,7 @@
  * history and logs, available at http://kdesvn.alwins-world.de.           *
  ***************************************************************************/
 
+
 #include "contextdata.h"
 #include "context_listener.h"
 #include "conflictresult.h"
@@ -66,125 +67,70 @@ ContextData::ContextData(const QString &configDir_)
     // 11 providers (+1 for windowsvariant)
 
     apr_array_header_t *providers =
-#if defined(WIN32) && (SVN_VER_MAJOR >= 1) && (SVN_VER_MINOR >= 4)  //krazy:exclude=cpp
+#if defined(WIN32)  //krazy:exclude=cpp
         apr_array_make(pool, 12, sizeof(svn_auth_provider_object_t *));
 #else
         apr_array_make(pool, 11, sizeof(svn_auth_provider_object_t *));
 #endif
     svn_auth_provider_object_t *provider;
 
-#if defined(WIN32) && (SVN_VER_MAJOR >= 1) && (SVN_VER_MINOR >= 4)  //krazy:exclude=cpp
+#if defined(WIN32)  //krazy:exclude=cpp
     svn_auth_get_windows_simple_provider(&provider, pool);
     APR_ARRAY_PUSH(providers, svn_auth_provider_object_t *) = provider;
 #endif
 
-#if  ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 6) || (SVN_VER_MAJOR > 2))
+#if  SVN_API_VERSION >= SVN_VERSION_CHECK(1,6,0)
     svn_auth_get_simple_provider2
     (&provider, maySavePlaintext, this, pool);
 #else
-#if (SVN_VER_MINOR >= 4)
-    svn_auth_get_simple_provider
-#else
-    svn_client_get_simple_provider
-#endif
-    (&provider, pool);
+    svn_auth_get_simple_provider(&provider, pool);
 #endif
     *(svn_auth_provider_object_t **)apr_array_push(providers) = provider;
 
-#if (SVN_VER_MAJOR >= 1) && (SVN_VER_MINOR >= 4)
-    svn_auth_get_username_provider
-#else
-    svn_client_get_username_provider
-#endif
-    (&provider, pool);
+    svn_auth_get_username_provider(&provider, pool);
     *(svn_auth_provider_object_t **)apr_array_push(providers) = provider;
 
-#if (SVN_VER_MAJOR >= 1) && (SVN_VER_MINOR >= 4)
-    svn_auth_get_simple_prompt_provider
-#else
-    svn_client_get_simple_prompt_provider
-#endif
-    (&provider, onCachedPrompt, this, 0, pool);
+    svn_auth_get_simple_prompt_provider(&provider, onCachedPrompt, this, 0, pool);
     *(svn_auth_provider_object_t **)apr_array_push(providers) = provider;
 
-#if (SVN_VER_MAJOR >= 1) && (SVN_VER_MINOR >= 4)
-    svn_auth_get_simple_prompt_provider
-#else
-    svn_client_get_simple_prompt_provider
-#endif
-    (&provider, onSavedPrompt, this, 0, pool);
+    svn_auth_get_simple_prompt_provider(&provider, onSavedPrompt, this, 0, pool);
     *(svn_auth_provider_object_t **)apr_array_push(providers) = provider;
 
-#if (SVN_VER_MAJOR >= 1) && (SVN_VER_MINOR >= 4)
-    svn_auth_get_simple_prompt_provider
-#else
-    svn_client_get_simple_prompt_provider
-#endif
     /* not very nice. should be infinite... */
-    (&provider, onSimplePrompt, this, 100000000, pool);
+    svn_auth_get_simple_prompt_provider(&provider, onSimplePrompt, this, 100000000, pool);
     *(svn_auth_provider_object_t **)apr_array_push(providers) = provider;
 
     // add ssl providers
 
     // file first then prompt providers
-#if (SVN_VER_MAJOR >= 1) && (SVN_VER_MINOR >= 4)
-    svn_auth_get_ssl_server_trust_file_provider
-#else
-    svn_client_get_ssl_server_trust_file_provider
-#endif
-    (&provider, pool);
+    svn_auth_get_ssl_server_trust_file_provider(&provider, pool);
     *(svn_auth_provider_object_t **)apr_array_push(providers) = provider;
 
-#if (SVN_VER_MAJOR >= 1) && (SVN_VER_MINOR >= 4)
-    svn_auth_get_ssl_client_cert_file_provider
-#else
-    svn_client_get_ssl_client_cert_file_provider
-#endif
-    (&provider, pool);
+    svn_auth_get_ssl_client_cert_file_provider(&provider, pool);
     *(svn_auth_provider_object_t **)apr_array_push(providers) = provider;
 
-#if  ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 6) || (SVN_VER_MAJOR > 2))
-    svn_auth_get_ssl_client_cert_pw_file_provider2
-    (&provider, maySavePlaintext, this, pool);
+#if  SVN_API_VERSION >= SVN_VERSION_CHECK(1,6,0)
+    svn_auth_get_ssl_client_cert_pw_file_provider2(&provider, maySavePlaintext, this, pool);
 #else
-#if (SVN_VER_MINOR >= 4)
-    svn_auth_get_ssl_client_cert_pw_file_provider
-#else
-    svn_client_get_ssl_client_cert_pw_file_provider
-#endif
-    (&provider, pool);
+    svn_auth_get_ssl_client_cert_pw_file_provider(&provider, pool);
 #endif
     *(svn_auth_provider_object_t **)apr_array_push(providers) = provider;
 
-#if (SVN_VER_MAJOR >= 1) && (SVN_VER_MINOR >= 4)
-    svn_auth_get_ssl_server_trust_prompt_provider
-#else
-    svn_client_get_ssl_server_trust_prompt_provider
-#endif
-    (&provider, onSslServerTrustPrompt, this, pool);
+    svn_auth_get_ssl_server_trust_prompt_provider(&provider, onSslServerTrustPrompt, this, pool);
     *(svn_auth_provider_object_t **)apr_array_push(providers) = provider;
 
     // first try load from extra storage
-#if (SVN_VER_MAJOR >= 1) && (SVN_VER_MINOR >= 4)
-    svn_auth_get_ssl_client_cert_pw_prompt_provider
-#else
-    svn_client_get_ssl_client_cert_pw_prompt_provider
-#endif
-    (&provider, onFirstSslClientCertPw, this, 0, pool);
+    svn_auth_get_ssl_client_cert_pw_prompt_provider(&provider, onFirstSslClientCertPw, this, 0, pool);
     *(svn_auth_provider_object_t **)apr_array_push(providers) = provider;
 
     // plugged in 3 as the retry limit - what is a good limit?
-#if (SVN_VER_MAJOR >= 1) && (SVN_VER_MINOR >= 4)
-    svn_auth_get_ssl_client_cert_pw_prompt_provider
-#else
-    svn_client_get_ssl_client_cert_pw_prompt_provider
-#endif
-    (&provider, onSslClientCertPwPrompt, this, 3, pool);
+    svn_auth_get_ssl_client_cert_pw_prompt_provider(&provider, onSslClientCertPwPrompt, this, 3, pool);
     *(svn_auth_provider_object_t **)apr_array_push(providers) = provider;
 
     svn_auth_baton_t *ab;
     svn_auth_open(&ab, providers, pool);
 
+    // todo svn 1.8: svn_client_create_context2
     // initialize ctx structure
     svn_client_create_context(&m_ctx, pool);
 
@@ -214,21 +160,26 @@ ContextData::ContextData(const QString &configDir_)
     m_ctx->progress_func = onProgress;
     m_ctx->progress_baton = this;
 
-#if  ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 5) || (SVN_VER_MAJOR > 2))
     m_ctx->log_msg_func3 = onLogMsg3;
     m_ctx->log_msg_baton3 = this;
 
     m_ctx->conflict_func = onWcConflictResolver;
     m_ctx->conflict_baton = this;
 
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,7,0)
+    m_ctx->conflict_func2 = onWcConflictResolver2;
+    m_ctx->conflict_baton2 = this;
+#endif
+
     m_ctx->client_name = "SvnQt wrapper client";
     initMimeTypes();
-#endif
 }
+
 
 ContextData::~ContextData()
 {
 }
+
 
 const QString &ContextData::getLogMessage() const
 {
@@ -452,7 +403,6 @@ svn_error_t *ContextData::onLogMsg2(const char **log_msg,
     return SVN_NO_ERROR;
 }
 
-#if  ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 5) || (SVN_VER_MAJOR > 2))
 svn_error_t *ContextData::onLogMsg3(const char **log_msg,
                                     const char **tmp_file,
                                     const apr_array_header_t *commit_items,
@@ -482,7 +432,6 @@ svn_error_t *ContextData::onLogMsg3(const char **log_msg,
     *tmp_file = NULL;
     return SVN_NO_ERROR;
 }
-#endif
 
 void ContextData::onNotify(void *baton,
                            const char *path,
@@ -524,11 +473,11 @@ svn_error_t *ContextData::onCancel(void *baton)
 }
 
 svn_error_t *ContextData::onCachedPrompt(svn_auth_cred_simple_t **cred,
-        void *baton,
-        const char *realm,
-        const char *username,
-        svn_boolean_t _may_save,
-        apr_pool_t *pool)
+                                         void *baton,
+                                         const char *realm,
+                                         const char *username,
+                                         svn_boolean_t _may_save,
+                                         apr_pool_t *pool)
 {
     ContextData *data = 0;
     SVN_ERR(getContextData(baton, &data));
@@ -574,11 +523,11 @@ svn_error_t *ContextData::onSavedPrompt(svn_auth_cred_simple_t **cred,
 }
 
 svn_error_t *ContextData::onSimplePrompt(svn_auth_cred_simple_t **cred,
-        void *baton,
-        const char *realm,
-        const char *username,
-        svn_boolean_t _may_save,
-        apr_pool_t *pool)
+                                         void *baton,
+                                         const char *realm,
+                                         const char *username,
+                                         svn_boolean_t _may_save,
+                                         apr_pool_t *pool)
 {
     ContextData *data = 0;
     SVN_ERR(getContextData(baton, &data));
@@ -600,25 +549,25 @@ svn_error_t *ContextData::onSimplePrompt(svn_auth_cred_simple_t **cred,
 }
 
 svn_error_t *ContextData::onSslServerTrustPrompt(svn_auth_cred_ssl_server_trust_t **cred,
-        void *baton,
-        const char *realm,
-        apr_uint32_t failures,
-        const svn_auth_ssl_server_cert_info_t *info,
-        svn_boolean_t may_save,
-        apr_pool_t *pool)
+                                                 void *baton,
+                                                 const char *realm,
+                                                 apr_uint32_t failures,
+                                                 const svn_auth_ssl_server_cert_info_t *info,
+                                                 svn_boolean_t may_save,
+                                                 apr_pool_t *pool)
 {
     ContextData *data = 0;
     SVN_ERR(getContextData(baton, &data));
 
     ContextListener::SslServerTrustData trustData(failures);
     if (realm != NULL) {
-        trustData.realm = realm;
+        trustData.realm = QString::fromUtf8(realm);
     }
-    trustData.hostname = info->hostname;
-    trustData.fingerprint = info->fingerprint;
-    trustData.validFrom = info->valid_from;
-    trustData.validUntil = info->valid_until;
-    trustData.issuerDName = info->issuer_dname;
+    trustData.hostname = QString::fromUtf8(info->hostname);
+    trustData.fingerprint = QString::fromUtf8(info->fingerprint);
+    trustData.validFrom = QString::fromUtf8(info->valid_from);
+    trustData.validUntil = QString::fromUtf8(info->valid_until);
+    trustData.issuerDName = QString::fromUtf8(info->issuer_dname);
     trustData.maySave = may_save != 0;
 
     apr_uint32_t acceptedFailures = failures;
@@ -646,8 +595,8 @@ svn_error_t *ContextData::onSslServerTrustPrompt(svn_auth_cred_ssl_server_trust_
 }
 
 svn_error_t *ContextData::onSslClientCertPrompt(svn_auth_cred_ssl_client_cert_t **cred,
-        void *baton,
-        apr_pool_t *pool)
+                                                void *baton,
+                                                apr_pool_t *pool)
 {
     ContextData *data = 0;
     SVN_ERR(getContextData(baton, &data));
@@ -751,14 +700,13 @@ void ContextData::onProgress(apr_off_t progress, apr_off_t total, void *baton, a
     data->getListener()->contextProgress(progress, total);
 }
 
-#if  ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 5) || (SVN_VER_MAJOR > 2))
 void ContextData::initMimeTypes()
 {
     // code take from subversion 1.5 commandline client
     const char *mimetypes_file;
     svn_error_t *err = 0L;
     svn_config_t *cfg = (svn_config_t *)apr_hash_get(m_ctx->config, SVN_CONFIG_CATEGORY_CONFIG,
-                        APR_HASH_KEY_STRING);
+                                                     APR_HASH_KEY_STRING);
 
     svn_config_get(cfg, &mimetypes_file,
                    SVN_CONFIG_SECTION_MISCELLANY,
@@ -770,11 +718,9 @@ void ContextData::initMimeTypes()
         }
     }
 }
-#endif
 
 svn_error_t *ContextData::onWcConflictResolver(svn_wc_conflict_result_t **result, const svn_wc_conflict_description_t *description, void *baton, apr_pool_t *pool)
 {
-#if  ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 5) || (SVN_VER_MAJOR > 2))
     ContextData *data = 0;
     SVN_ERR(getContextData(baton, &data));
     ConflictResult cresult;
@@ -783,19 +729,30 @@ svn_error_t *ContextData::onWcConflictResolver(svn_wc_conflict_result_t **result
     }
     cresult.assignResult(result, pool);
     return SVN_NO_ERROR;
-#else
-    Q_UNUSED(result);
-    Q_UNUSED(description);
-    Q_UNUSED(baton);
-    Q_UNUSED(pool);
-    return svn_error_create(SVN_ERR_CANCELLED, NULL, QCoreApplication::translate("svnqt", "invalid subversion version."));
-#endif
 }
+
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,7,0)
+svn_error_t *ContextData::onWcConflictResolver2(svn_wc_conflict_result_t **result,
+                                                const svn_wc_conflict_description2_t *description,
+                                                void *baton,
+                                                apr_pool_t *result_pool,
+                                                apr_pool_t *)
+{
+  ContextData *data = 0;
+  SVN_ERR(getContextData(baton, &data));
+  ConflictResult cresult;
+  if (!data->getListener()->contextConflictResolve(cresult, ConflictDescription(description))) {
+      return data->generate_cancel_error();
+  }
+  cresult.assignResult(result, result_pool);
+  return SVN_NO_ERROR;
+}
+#endif
 
 svn_error_t *ContextData::maySavePlaintext(svn_boolean_t *may_save_plaintext, const char *realmstring, void *baton, apr_pool_t *pool)
 {
     Q_UNUSED(pool);
-#if  ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 6) || (SVN_VER_MAJOR > 2))
+#if  SVN_API_VERSION >= SVN_VERSION_CHECK(1,6,0)
     ContextData *data = 0;
     SVN_ERR(getContextData(baton, &data));
     data->getListener()->maySavePlaintext(may_save_plaintext, QString::fromUtf8(realmstring));
@@ -823,11 +780,7 @@ bool ContextData::contextAddListItem(DirEntries *entries, const svn_dirent_t *di
 bool ContextListener::contextConflictResolve(ConflictResult &result, const ConflictDescription &description)
 {
     Q_UNUSED(description);
-#if  ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 5) || (SVN_VER_MAJOR > 2))
     result.setChoice(ConflictResult::ChoosePostpone);
-#else
-    Q_UNUSED(result);
-#endif
     return true;
 }
 

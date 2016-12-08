@@ -3,7 +3,7 @@
 export DEB_LDFLAGS_MAINT_APPEND := -Wl,--as-needed
 
 %:
-	dh $@ --parallel --with kde
+	dh $@ --with kf5
 
 override_dh_install:
 	dh_install --list-missing

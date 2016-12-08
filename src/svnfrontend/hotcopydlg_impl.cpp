@@ -19,8 +19,6 @@
  ***************************************************************************/
 #include "hotcopydlg_impl.h"
 
-#include <kurl.h>
-
 HotcopyDlg_impl::HotcopyDlg_impl(QWidget *parent)
     : QWidget(parent), Ui::HotcopyDlg()
 {
@@ -35,12 +33,12 @@ HotcopyDlg_impl::~HotcopyDlg_impl()
 
 QString HotcopyDlg_impl::srcPath()const
 {
-    return m_SrcpathEditor->url().path(KUrl::RemoveTrailingSlash);
+    return m_SrcpathEditor->url().toLocalFile();
 }
 
 QString HotcopyDlg_impl::destPath()const
 {
-    return m_DestpathEditor->url().path(KUrl::RemoveTrailingSlash);
+    return m_DestpathEditor->url().toLocalFile();
 }
 
 bool HotcopyDlg_impl::cleanLogs()const

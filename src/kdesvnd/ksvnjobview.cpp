@@ -19,9 +19,10 @@
 ***************************************************************************/
 
 #include "ksvnjobview.h"
+#include <klocalizedstring.h>
 
 KsvnJobView::KsvnJobView(qulonglong id, const QString &service, const QString &path, const QDBusConnection &connection, QObject *parent)
-    : org::kde::JobView(service, path, connection, parent), m_id(id), m_state(STOPPED), m_max(0)
+    : org::kde::JobViewV2(service, path, connection, parent), m_id(id), m_state(STOPPED), m_max(0)
 {
     connect(this, SIGNAL(cancelRequested()), this,
             SLOT(killJob()));
@@ -38,14 +39,13 @@ void KsvnJobView::killJob()
     m_state = CANCELD;
 }
 
-unsigned long KsvnJobView::percent(qulonglong amount)
+unsigned long KsvnJobView::percent(qulonglong amount) const
 {
-    return (unsigned long)((float)(amount) / (float)(m_max) * 100.0);
+    return static_cast<unsigned long>(amount / m_max * 100.0);
 }
 
 void KsvnJobView::setTotal(qlonglong amount)
 {
-    static const QString unit("bytes");
     m_max = amount;
-    setTotalAmount(amount, unit);
+    setTotalAmount(amount, i18n("bytes"));
 }

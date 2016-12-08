@@ -19,26 +19,23 @@
  ***************************************************************************/
 #include "revisiontree.h"
 #include "../stopdlg.h"
-#include "src/svnqt/log_entry.h"
-#include "src/svnqt/cache/LogCache.h"
-#include "src/svnqt/cache/ReposLog.h"
-#include "src/svnqt/cache/ReposConfig.h"
-#include "src/svnqt/url.h"
-#include "src/svnqt/client_parameter.h"
-#include "helpers/sub2qt.h"
+#include "svnqt/log_entry.h"
+#include "svnqt/cache/LogCache.h"
+#include "svnqt/cache/ReposLog.h"
+#include "svnqt/cache/ReposConfig.h"
+#include "svnqt/url.h"
+#include "svnqt/client_parameter.h"
 #include "revtreewidget.h"
 #include "revgraphview.h"
 #include "elogentry.h"
-#include "src/svnfrontend/fronthelpers/cursorstack.h"
-#include "src/settings/kdesvnsettings.h"
+#include "svnfrontend/fronthelpers/cursorstack.h"
+#include "settings/kdesvnsettings.h"
 
-#include <kdebug.h>
-#include <kprogressdialog.h>
-#include <klocale.h>
-#include <kcodecs.h>
-#include <kmessagebox.h>
+#include <KLocalizedString>
+#include <KMessageBox>
 
-#include <qwidget.h>
+#include <QWidget>
+#include <QProgressDialog>
 
 #define INTERNALCOPY 1
 #define INTERNALRENAME 2
@@ -54,7 +51,7 @@ public:
     svn::LogEntriesMap m_OldHistory;
 
     long max_rev, min_rev;
-    KProgressDialog *progress;
+    QProgressDialog *progress;
     QTime m_stopTick;
 
     QWidget *dlgParent;
@@ -88,7 +85,7 @@ bool RtreeData::getLogs(const QString &reposRoot, const svn::Revision &startr, c
     }
     svn::LogParameter params;
     params.targets(reposRoot).revisionRange(endr, startr).peg(startr).limit(0).discoverChangedPathes(true).strictNodeHistory(false);
-    QStringList ex = svn::cache::ReposConfig::self()->readEntry(reposRoot, "tree_exclude_list", QStringList());
+    const svn::StringArray ex(svn::cache::ReposConfig::self()->readEntry(reposRoot, "tree_exclude_list", QStringList()));
     try {
         CursorStack a(Qt::BusyCursor);
         StopDlg sdlg(m_Listener, dlgParent,
@@ -118,8 +115,7 @@ RevisionTree::RevisionTree(const svn::ClientP &aClient,
                            const QString &reposRoot,
                            const svn::Revision &startr, const svn::Revision &endr,
                            const QString &origin,
-                           const svn::Revision &baserevision,
-                           QWidget *treeParent, QWidget *parent)
+                           const svn::Revision &baserevision, QWidget *parent)
     : m_InitialRevsion(0), m_Path(origin), m_Valid(false)
 {
     m_Data = new RtreeData;
@@ -133,20 +129,18 @@ RevisionTree::RevisionTree(const svn::ClientP &aClient,
 
     long possible_rev = -1;
 
-    m_Data->progress = new KProgressDialog(parent, i18n("Scanning logs"), i18n("Scanning the logs for %1", origin));
+    m_Data->progress = new QProgressDialog(i18n("Scanning the logs for %1", origin), i18n("Cancel"), 0, m_Data->m_OldHistory.size(), parent);
+    m_Data->progress->setWindowTitle(i18n("Scanning logs"));
     m_Data->progress->setMinimumDuration(100);
-    m_Data->progress->show();
-    m_Data->progress->setAllowCancel(true);
-    m_Data->progress->progressBar()->setRange(0, m_Data->m_OldHistory.size());
     m_Data->progress->setAutoClose(false);
-    m_Data->progress->show();
+    m_Data->progress->setWindowModality(Qt::WindowModal);
     bool cancel = false;
     svn::LogEntriesMap::Iterator it;
     unsigned count = 0;
     for (it = m_Data->m_OldHistory.begin(); it != m_Data->m_OldHistory.end(); ++it) {
-        m_Data->progress->progressBar()->setValue(count);
+        m_Data->progress->setValue(count);
         QCoreApplication::processEvents();
-        if (m_Data->progress->wasCancelled()) {
+        if (m_Data->progress->wasCanceled()) {
             cancel = true;
             break;
         }
@@ -175,10 +169,9 @@ RevisionTree::RevisionTree(const svn::ClientP &aClient,
     if (!cancel) {
         if (topDownScan()) {
             m_Data->progress->setAutoReset(true);
-            m_Data->progress->progressBar()->setRange(0, 100);
-            m_Data->progress->progressBar()->setTextVisible(false);
+            m_Data->progress->setRange(0, 100);
             m_Data->m_stopTick.restart();
-            m_Data->m_TreeDisplay = new RevTreeWidget(m_Data->m_Listener, m_Data->m_Client, treeParent);
+            m_Data->m_TreeDisplay = new RevTreeWidget(m_Data->m_Client);
             if (bottomUpScan(m_InitialRevsion, 0, m_Path, 0)) {
                 m_Valid = true;
                 m_Data->m_TreeDisplay->setBasePath(reposRoot);
@@ -210,20 +203,20 @@ bool RevisionTree::isDeleted(long revision, const QString &path)
 
 bool RevisionTree::topDownScan()
 {
-    m_Data->progress->progressBar()->setRange(0, m_Data->max_rev - m_Data->min_rev);
+    m_Data->progress->setRange(0, m_Data->max_rev - m_Data->min_rev);
     bool cancel = false;
     QString label;
     QString olabel = m_Data->progress->labelText();
     for (long j = m_Data->max_rev; j >= m_Data->min_rev; --j) {
-        m_Data->progress->progressBar()->setValue(m_Data->max_rev - j);
+        m_Data->progress->setValue(m_Data->max_rev - j);
         QCoreApplication::processEvents();
-        if (m_Data->progress->wasCancelled()) {
+        if (m_Data->progress->wasCanceled()) {
             cancel = true;
             break;
         }
         for (long i = 0; i < m_Data->m_OldHistory[j].changedPaths.count(); ++i) {
             if (i > 0 && i % 100 == 0) {
-                if (m_Data->progress->wasCancelled()) {
+                if (m_Data->progress->wasCanceled()) {
                     cancel = true;
                     break;
                 }
@@ -236,7 +229,6 @@ bool RevisionTree::topDownScan()
                     isParent(m_Data->m_OldHistory[j].changedPaths[i].path, m_Path)) {
                 if (!m_Data->m_OldHistory[j].changedPaths[i].copyFromPath.isEmpty()) {
                     if (m_InitialRevsion < m_Data->m_OldHistory[j].revision) {
-                        QString tmpPath = m_Path;
                         QString r = m_Path.mid(m_Data->m_OldHistory[j].changedPaths[i].path.length());
                         m_Path = m_Data->m_OldHistory[j].changedPaths[i].copyFromPath;
                         m_Path += r;
@@ -254,15 +246,15 @@ bool RevisionTree::topDownScan()
     m_Data->progress->setLabelText(olabel);
     /* find forward references and filter them out */
     for (long j = m_Data->max_rev; j >= m_Data->min_rev; --j) {
-        m_Data->progress->progressBar()->setValue(m_Data->max_rev - j);
+        m_Data->progress->setValue(m_Data->max_rev - j);
         QCoreApplication::processEvents();
-        if (m_Data->progress->wasCancelled()) {
+        if (m_Data->progress->wasCanceled()) {
             cancel = true;
             break;
         }
         for (long i = 0; i < m_Data->m_OldHistory[j].changedPaths.count(); ++i) {
             if (i > 0 && i % 100 == 0) {
-                if (m_Data->progress->wasCancelled()) {
+                if (m_Data->progress->wasCanceled()) {
                     cancel = true;
                     break;
                 }
@@ -300,9 +292,9 @@ bool RevisionTree::topDownScan()
     }
     m_Data->progress->setLabelText(olabel);
     for (long j = m_Data->max_rev; j >= m_Data->min_rev; --j) {
-        m_Data->progress->progressBar()->setValue(m_Data->max_rev - j);
+        m_Data->progress->setValue(m_Data->max_rev - j);
         QCoreApplication::processEvents();
-        if (m_Data->progress->wasCancelled()) {
+        if (m_Data->progress->wasCanceled()) {
             cancel = true;
             break;
         }
@@ -311,7 +303,7 @@ bool RevisionTree::topDownScan()
                 continue;
             }
             if (i > 0 && i % 100 == 0) {
-                if (m_Data->progress->wasCancelled()) {
+                if (m_Data->progress->wasCanceled()) {
                     cancel = true;
                     break;
                 }
@@ -345,12 +337,11 @@ bool RevisionTree::isValid()const
 
 static QString uniqueNodeName(long rev, const QString &path)
 {
-    QString res = KCodecs::base64Encode(path.toLocal8Bit(), false);
-    res.replace('\"', "_quot_");
-    res.replace(' ', "_space_");
+    QString res = QString::fromUtf8(path.toLocal8Bit().toBase64());
+    res.replace(QLatin1Char('\"'), QLatin1String("_quot_"));
+    res.replace(QLatin1Char(' '), QLatin1String("_space_"));
     QString n; n.sprintf("%05ld", rev);
-    res = "\"" + n + QString("_%1\"").arg(res);
-    return res;
+    return QLatin1Char('\"') + n + QLatin1Char('_') + res + QLatin1Char('\"');
 }
 
 bool RevisionTree::bottomUpScan(long startrev, unsigned recurse, const QString &_path, long _last)
@@ -361,17 +352,17 @@ bool RevisionTree::bottomUpScan(long startrev, unsigned recurse, const QString &
     QString path = _path;
     long lastrev = _last;
 #ifdef DEBUG_PARSE
-    kDebug(9510) << "Searching for " << path << " at revision " << startrev
+    qCDebug(KDESVN_LOG) << "Searching for " << path << " at revision " << startrev
                  << " recursion " << recurse << endl;
 #endif
     bool cancel = false;
     for (long j = startrev; j <= m_Data->max_rev; ++j) {
         if (m_Data->m_stopTick.elapsed() > 500) {
-            m_Data->progress->progressBar()->setValue(m_Data->progress->progressBar()->value() + 1);
+            m_Data->progress->setValue(m_Data->progress->value() + 1);
             QCoreApplication::processEvents();
             m_Data->m_stopTick.restart();
         }
-        if (m_Data->progress->wasCancelled()) {
+        if (m_Data->progress->wasCanceled()) {
             cancel = true;
             break;
         }
@@ -384,7 +375,7 @@ bool RevisionTree::bottomUpScan(long startrev, unsigned recurse, const QString &
                 bool get_out = false;
                 if (FORWARDENTRY.path != path) {
 #ifdef DEBUG_PARSE
-                    kDebug(9510) << "Parent rename? " << FORWARDENTRY.path << " -> " << FORWARDENTRY.copyToPath << " -> " << FORWARDENTRY.copyFromPath << endl;
+                    qCDebug(KDESVN_LOG) << "Parent rename? " << FORWARDENTRY.path << " -> " << FORWARDENTRY.copyToPath << " -> " << FORWARDENTRY.copyFromPath << endl;
 #endif
                 }
                 if (FORWARDENTRY.action == INTERNALCOPY ||
@@ -408,18 +399,18 @@ bool RevisionTree::bottomUpScan(long startrev, unsigned recurse, const QString &
                     m_Data->m_TreeDisplay->m_RevGraphView->m_Tree[n2].Action = FORWARDENTRY.action;
                     m_Data->m_TreeDisplay->m_RevGraphView->m_Tree[n2].Author = m_Data->m_History[FORWARDENTRY.copyToRevision].author;
                     m_Data->m_TreeDisplay->m_RevGraphView->m_Tree[n2].Message = m_Data->m_History[FORWARDENTRY.copyToRevision].message;
-                    m_Data->m_TreeDisplay->m_RevGraphView->m_Tree[n2].Date = helpers::sub2qt::apr_time2qtString(m_Data->m_History[FORWARDENTRY.copyToRevision].date);
+                    m_Data->m_TreeDisplay->m_RevGraphView->m_Tree[n2].Date = svn::DateTime(m_Data->m_History[FORWARDENTRY.copyToRevision].date).toString();
                     if (ren) {
                         lastrev = FORWARDENTRY.copyToRevision;
                         /* skip items between */
 #ifdef DEBUG_PARSE
-                        kDebug(9510) << "Renamed to " << recPath << " at revision " << FORWARDENTRY.copyToRevision << endl;
+                        qCDebug(KDESVN_LOG) << "Renamed to " << recPath << " at revision " << FORWARDENTRY.copyToRevision << endl;
 #endif
                         j = lastrev;
                         path = recPath;
                     } else {
 #ifdef DEBUG_PARSE
-                        kDebug(9510) << "Copy to " << recPath << endl;
+                        qCDebug(KDESVN_LOG) << "Copy to " << recPath << endl;
 #endif
                         if (!bottomUpScan(FORWARDENTRY.copyToRevision, recurse + 1, recPath, FORWARDENTRY.copyToRevision)) {
                             return false;
@@ -429,7 +420,7 @@ bool RevisionTree::bottomUpScan(long startrev, unsigned recurse, const QString &
                     switch (FORWARDENTRY.action) {
                     case 'A':
 #ifdef DEBUG_PARSE
-                        kDebug(9510) << "Inserting adding base item" << endl;
+                        qCDebug(KDESVN_LOG) << "Inserting adding base item" << endl;
 #endif
                         n1 = uniqueNodeName(j, FORWARDENTRY.path);
                         m_Data->m_TreeDisplay->m_RevGraphView->m_Tree[n1].Action = FORWARDENTRY.action;
@@ -439,7 +430,7 @@ bool RevisionTree::bottomUpScan(long startrev, unsigned recurse, const QString &
                     case 'M':
                     case 'R':
 #ifdef DEBUG_PARSE
-                        kDebug(9510) << "Item modified at revision " << j << " recurse " << recurse << endl;
+                        qCDebug(KDESVN_LOG) << "Item modified at revision " << j << " recurse " << recurse << endl;
 #endif
                         n1 = uniqueNodeName(j, FORWARDENTRY.path);
                         n2 = uniqueNodeName(lastrev, FORWARDENTRY.path);
@@ -455,7 +446,7 @@ bool RevisionTree::bottomUpScan(long startrev, unsigned recurse, const QString &
                         break;
                     case 'D':
 #ifdef DEBUG_PARSE
-                        kDebug(9510) << "(Sloppy match) Item deleted at revision " << j << " recurse " << recurse << endl;
+                        qCDebug(KDESVN_LOG) << "(Sloppy match) Item deleted at revision " << j << " recurse " << recurse << endl;
 #endif
                         n1 = uniqueNodeName(j, path);
                         n2 = uniqueNodeName(lastrev, path);
@@ -479,7 +470,7 @@ bool RevisionTree::bottomUpScan(long startrev, unsigned recurse, const QString &
                     switch (FORWARDENTRY.action) {
                     case 'D':
 #ifdef DEBUG_PARSE
-                        kDebug(9510) << "(Exact match) Item deleted at revision " << j << " recurse " << recurse << endl;
+                        qCDebug(KDESVN_LOG) << "(Exact match) Item deleted at revision " << j << " recurse " << recurse << endl;
 #endif
                         n1 = uniqueNodeName(j, path);
                         n2 = uniqueNodeName(lastrev, path);
@@ -522,11 +513,11 @@ void RevisionTree::fillItem(long rev, int pathIndex, const QString &nodeName, co
         m_Data->m_TreeDisplay->m_RevGraphView->m_Tree[nodeName].Action = m_Data->m_History[rev].changedPaths[pathIndex].action;
         m_Data->m_TreeDisplay->m_RevGraphView->m_Tree[nodeName].Author = m_Data->m_History[rev].author;
         m_Data->m_TreeDisplay->m_RevGraphView->m_Tree[nodeName].Message = m_Data->m_History[rev].message;
-        m_Data->m_TreeDisplay->m_RevGraphView->m_Tree[nodeName].Date = helpers::sub2qt::apr_time2qtString(m_Data->m_History[rev].date);
+        m_Data->m_TreeDisplay->m_RevGraphView->m_Tree[nodeName].Date = svn::DateTime(m_Data->m_History[rev].date).toString();
     } else {
         m_Data->m_TreeDisplay->m_RevGraphView->m_Tree[nodeName].Action = 0;
         m_Data->m_TreeDisplay->m_RevGraphView->m_Tree[nodeName].Author.clear();
         m_Data->m_TreeDisplay->m_RevGraphView->m_Tree[nodeName].Message.clear();
-        m_Data->m_TreeDisplay->m_RevGraphView->m_Tree[nodeName].Date = helpers::sub2qt::apr_time2qtString(0);
+        m_Data->m_TreeDisplay->m_RevGraphView->m_Tree[nodeName].Date = svn::DateTime(0).toString();
     }
 }

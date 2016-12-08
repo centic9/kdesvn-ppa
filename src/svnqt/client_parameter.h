@@ -88,13 +88,6 @@ public:
     //! return value for asChild
     bool makeParent()const;
 
-    //! set move operation parameter force to true
-    /*! this is ignored for copy operation */
-    CopyParameter &force(bool);
-    //! return value for force
-    /*! this is ignored for copy operation */
-    bool force()const;
-
     //! set the source revision for the copy operation
     CopyParameter &srcRevision(const Revision &);
     //! get the source revision for the copy operation
@@ -211,6 +204,7 @@ public:
      */
     bool copies_as_adds()const;
 
+
 };
 
 struct StatusParameterData;
@@ -220,7 +214,7 @@ class SVNQT_EXPORT StatusParameter
 private:
     QScopedPointer<StatusParameterData> _data;
 public:
-    explicit StatusParameter(const Path &_path);
+    explicit StatusParameter(const Path &_path = Path());
     ~StatusParameter();
 
     //! path to explore
@@ -481,6 +475,13 @@ public:
      * All other parameters are ignored in that case.
      */
     bool reintegrate()const;
+
+    /**
+     * @param allow_mixed_rev true if merging into mixed rev working copy is allowed. If false, merge fails if mixed rev WC
+     * @since subversion 1.7
+     */
+    MergeParameter &allow_mixed_rev(bool allow_mixed_rev);
+    bool allow_mixed_rev()const;
 };
 
 struct CheckoutParameterData;
@@ -534,6 +535,9 @@ public:
     CheckoutParameter &overWrite(bool overwrite);
     //!if true overwrite existing not versioned items.
     bool overWrite()const;
+    //! do not replace svn:keywords on export
+    bool ignoreKeywords()const;
+    CheckoutParameter &ignoreKeywords(bool ignorekeywords);
 
     //!Either "LF", "CR" or "CRLF" or QString().
     /*!
@@ -547,5 +551,6 @@ public:
     const QString &nativeEol()const;
 };
 }
+
 
 #endif

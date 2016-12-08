@@ -18,45 +18,39 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.         *
  ***************************************************************************/
 #include "svnlogdlgimp.h"
-#include "src/settings/kdesvnsettings.h"
+#include "settings/kdesvnsettings.h"
 #include "svnactions.h"
-#include "src/svnfrontend/fronthelpers/revisionbuttonimpl.h"
-#include "src/svnfrontend/models/logitemmodel.h"
-#include "src/svnfrontend/models/logmodelhelper.h"
+#include "svnfrontend/fronthelpers/revisionbuttonimpl.h"
+#include "svnfrontend/models/logitemmodel.h"
+#include "svnfrontend/models/logmodelhelper.h"
+#include "helpers/windowgeometryhelper.h"
 
 #include <kconfig.h>
-#include <kmenu.h>
-#include <kdebug.h>
 
+#include <KHelpClient>
+#include <KStandardGuiItem>
+#include <QDialogButtonBox>
 #include <QKeyEvent>
-#include <QDesktopWidget>
+#include <QMenu>
 #include <QSortFilterProxyModel>
 #include <QTextDocumentFragment>
 
-const char *SvnLogDlgImp::groupName = "log_dialog_size";
+const QLatin1String groupName("log_dialog_size");
 
 SvnLogDlgImp::SvnLogDlgImp(SvnActions *ac, bool modal, QWidget *parent)
-    : KDialog(parent)
+    : QDialog(parent)
 {
     setupUi(this);
-    setMainWidget(mMainWidget);
     setModal(modal);
-    setHelp("logdisplay-dlg", "kdesvn");
-    setButtons(Help | Close);
-    QWidget *b = button(Help);
-    if (b) {
-        m_ButtonLayout->addWidget(b);
-    }
-    b = button(Close);
-    if (b) {
-        m_ButtonLayout->addWidget(b);
-    }
-    m_DispPrevButton->setIcon(KIcon("kdesvndiff"));
-    m_DispSpecDiff->setIcon(KIcon("kdesvndiff"));
-    buttonBlame->setIcon(KIcon("kdesvnblame"));
+    m_pbClose->setDefault(true);
+    m_pbClose->setShortcut(Qt::CTRL | Qt::Key_Return);
+    KStandardGuiItem::assign(m_pbClose, KStandardGuiItem::Close);
+    KStandardGuiItem::assign(m_pbHelp, KStandardGuiItem::Help);
+    m_DispPrevButton->setIcon(QIcon::fromTheme("kdesvndiff"));
+    m_DispSpecDiff->setIcon(QIcon::fromTheme("kdesvndiff"));
+    buttonBlame->setIcon(QIcon::fromTheme("kdesvnblame"));
     m_SortModel = 0;
     m_CurrentModel = 0;
-
     m_ControlKeyDown = false;
 
     if (Kdesvnsettings::self()->log_always_list_changed_files()) {
@@ -87,12 +81,6 @@ SvnLogDlgImp::~SvnLogDlgImp()
     delete m_SortModel;
 }
 
-void SvnLogDlgImp::loadSize()
-{
-    KConfigGroup _k(Kdesvnsettings::self()->config(), groupName);
-    restoreDialogSize(_k);
-}
-
 void SvnLogDlgImp::dispLog(const svn::LogEntriesMapPtr &log, const QString &what, const QString &root, const svn::Revision &peg, const QString &pegUrl)
 {
     m_peg = peg;
@@ -105,11 +93,11 @@ void SvnLogDlgImp::dispLog(const svn::LogEntriesMapPtr &log, const QString &what
             QString reg;
             s = m_Actions->searchProperty(reg, "bugtraq:logregex", pegUrl, peg, true);
             if (!s.isNull() && !reg.isEmpty()) {
-                QStringList s1 = reg.split('\n');
-                if (s1.size() > 0) {
-                    _r1.setPattern(s1[0]);
+                const QStringList s1 = reg.split(QLatin1Char('\n'));
+                if (!s1.isEmpty()) {
+                    _r1.setPattern(s1.at(0));
                     if (s1.size() > 1) {
-                        _r2.setPattern(s1[1]);
+                        _r2.setPattern(s1.at(1));
                     }
                 }
             }
@@ -136,7 +124,7 @@ void SvnLogDlgImp::dispLog(const svn::LogEntriesMapPtr &_log)
     }
     bool must_init = false;
     if (!m_SortModel) {
-        m_SortModel = new QSortFilterProxyModel(m_LogTreeView);
+        m_SortModel = new SvnLogSortModel(m_LogTreeView);
         m_CurrentModel = new SvnLogModel(_log, _name, m_SortModel);
         m_SortModel->setSourceModel(m_CurrentModel);
         must_init = true;
@@ -152,7 +140,6 @@ void SvnLogDlgImp::dispLog(const svn::LogEntriesMapPtr &_log)
         m_LogTreeView->resizeColumnToContents(SvnLogModel::Revision);
         m_LogTreeView->resizeColumnToContents(SvnLogModel::Author);
         m_LogTreeView->resizeColumnToContents(SvnLogModel::Date);
-        loadSize();
     }
     m_startRevButton->setRevision(m_CurrentModel->max());
     m_endRevButton->setRevision(m_CurrentModel->min());
@@ -187,13 +174,13 @@ QString SvnLogDlgImp::genReplace(const QString &r1match)
             break;
         }
         count = _r2.matchedLength();
-        res += r1match.mid(oldpos, pos - oldpos);
+        res += r1match.midRef(oldpos, pos - oldpos);
         QString sub = r1match.mid(pos, count);
         QString _url = _bugurl;
         _url.replace("%BUGID%", sub);
         res += anf + _url + mid + sub + end;
     }
-    res += r1match.mid(oldpos);
+    res += r1match.midRef(oldpos);
     return res;
 }
 
@@ -235,14 +222,10 @@ void SvnLogDlgImp::slotSelectionChanged(const QItemSelection &current, const QIt
     QString msg = _m.toHtml();
     replaceBugids(msg);
     m_LogDisplay->setHtml(msg);
-    if (_index.row() > 0) {
-        QModelIndex _it = m_CurrentModel->index(_index.row() - 1);
-        m_DispPrevButton->setEnabled(true);
-    } else {
-        m_DispPrevButton->setEnabled(false);
-    }
+    m_DispPrevButton->setEnabled(_index.row() > 0);
     buttonBlame->setEnabled(true);
 }
+
 
 /*!
     \fn SvnLogDlgImp::slotDispPrevious()
@@ -259,30 +242,25 @@ void SvnLogDlgImp::slotDispPrevious()
         m_DispPrevButton->setEnabled(false);
         return;
     }
-    QString s, e;
-    SvnLogModelNodePtr k = m_CurrentModel->indexNode(_index);
-    SvnLogModelNodePtr p = m_CurrentModel->indexNode(_it);
+    const SvnLogModelNodePtr k = m_CurrentModel->indexNode(_index);
+    const SvnLogModelNodePtr p = m_CurrentModel->indexNode(_it);
     if (!k || !p) {
         m_DispPrevButton->setEnabled(false);
         return;
     }
 
-    s = _base + k->realName();
-    e = _base + p->realName();
+    const QString s(_base + k->realName());
+    const QString e(_base + p->realName());
     emit makeDiff(e, p->revision(), s, k->revision(), this);
 }
+
 
 /*!
     \fn SvnLogDlgImp::saveSize()
  */
 void SvnLogDlgImp::saveSize()
 {
-    int scnum = QApplication::desktop()->screenNumber(parentWidget());
-    QRect desk = QApplication::desktop()->screenGeometry(scnum);
-    KConfigGroup cs(Kdesvnsettings::self()->config(), groupName);
-    QSize sizeToSave = size();
-    cs.writeEntry(QString::fromLatin1("Width %1").arg(desk.width()), QString::number(sizeToSave.width()));
-    cs.writeEntry(QString::fromLatin1("Height %1").arg(desk.height()), QString::number(sizeToSave.height()));
+    WindowGeometryHelper::save(this, groupName);
 }
 
 void SvnLogDlgImp::slotRevisionSelected()
@@ -349,6 +327,12 @@ void SvnLogDlgImp::slotBeginHead()
     }
 }
 
+void SvnLogDlgImp::slotHelpRequested()
+{
+    KHelpClient::invokeHelp(QLatin1String("logdisplay-dlg"), QLatin1String("kdesvn"));
+}
+
+
 void SvnLogDlgImp::slotListEntries()
 {
     QModelIndex _index = selectedRow();
@@ -364,7 +348,7 @@ void SvnLogDlgImp::slotListEntries()
             return;
         }
         if (!_log->isEmpty()) {
-            ptr->setChangedPaths((*_log)[ptr->revision()]);
+            ptr->setChangedPaths(_log->value(ptr->revision()));
         }
     }
     if (ptr->changedPaths().isEmpty()) {
@@ -381,7 +365,7 @@ void SvnLogDlgImp::keyPressEvent(QKeyEvent *e)
     if (e->text().isEmpty() && e->key() == Qt::Key_Control) {
         m_ControlKeyDown = true;
     }
-    KDialog::keyPressEvent(e);
+    QDialog::keyPressEvent(e);
 }
 
 void SvnLogDlgImp::keyReleaseEvent(QKeyEvent *e)
@@ -392,8 +376,15 @@ void SvnLogDlgImp::keyReleaseEvent(QKeyEvent *e)
     if (e->text().isEmpty() && e->key() == Qt::Key_Control) {
         m_ControlKeyDown = false;
     }
-    KDialog::keyReleaseEvent(e);
+    QDialog::keyReleaseEvent(e);
 }
+
+void SvnLogDlgImp::showEvent(QShowEvent *e)
+{
+    QDialog::showEvent(e);
+    WindowGeometryHelper::restore(this, groupName);
+}
+
 
 void SvnLogDlgImp::slotBlameItem()
 {
@@ -437,17 +428,17 @@ void SvnLogDlgImp::slotCustomContextMenu(const QPoint &e)
         bel = m_SortModel->mapToSource(bel);
         rev = m_CurrentModel->toRevision(bel);
     }
-    KMenu popup;
+    QMenu popup;
     QAction *ac;
     bool unset = false;
     if (row != m_CurrentModel->rightRow()) {
-        ac = popup.addAction(KIcon("kdesvnright"), i18n("Set version as right side of diff"));
+        ac = popup.addAction(QIcon::fromTheme("kdesvnright"), i18n("Set version as right side of diff"));
         ac->setData(101);
     } else {
         unset = true;
     }
     if (row != m_CurrentModel->leftRow()) {
-        ac = popup.addAction(KIcon("kdesvnleft"), i18n("Set version as left side of diff"));
+        ac = popup.addAction(QIcon::fromTheme("kdesvnleft"), i18n("Set version as left side of diff"));
         ac->setData(102);
     } else {
         unset = true;
@@ -483,8 +474,8 @@ void SvnLogDlgImp::slotCustomContextMenu(const QPoint &e)
     case 104: {
         svn::Revision previous(rev);
         svn::Revision current(m_CurrentModel->toRevision(ind));
-        QString _path = m_PegUrl;
-        m_Actions->slotMergeWcRevisions(_path, current, previous, true, true, false, false);
+        QString _path = m_PegUrl.path();
+        m_Actions->slotMergeWcRevisions(_path, current, previous, true, true, false, false, false);
     }
     break;
     }
@@ -507,7 +498,7 @@ void SvnLogDlgImp::slotChangedPathContextMenu(const QPoint &e)
         return;
     }
     qlonglong rev = m_CurrentModel->toRevision(ind);
-    KMenu popup;
+    QMenu popup;
     QString name = item->path();
     QString action = item->action();
     QString source = item->revision() > -1 ? item->source() : item->path();
@@ -565,7 +556,6 @@ void SvnLogDlgImp::slotSingleDoubleClicked(QTreeWidgetItem *_item, int)
 
     QString name = item->path();
     QString action = item->action();
-    QString source = item->revision() > -1 ? item->source() : item->path();
     svn::Revision start(svn::Revision::START);
     if (action != "D") {
         m_Actions->makeBlame(start, rev, _base + name, QApplication::activeModalWidget(), rev, this);

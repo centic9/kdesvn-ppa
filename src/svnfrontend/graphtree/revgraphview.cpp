@@ -21,21 +21,18 @@
 #include "graphtreelabel.h"
 #include "pannerview.h"
 #include "graphtree_defines.h"
-#include "src/settings/kdesvnsettings.h"
+#include "settings/kdesvnsettings.h"
 #include "../stopdlg.h"
-#include "src/svnqt/client.h"
+#include "svnqt/client.h"
 
-#include <kdebug.h>
-#include <ktemporaryfile.h>
-#include <ktempdir.h>
-#include <kprocess.h>
-#include <klocale.h>
-#include <kfiledialog.h>
-#include <kmessagebox.h>
-#include <kmenu.h>
-#include <kglobalsettings.h>
+#include <KLocalizedString>
+#include <KMessageBox>
+#include <KProcess>
 
+#include <QFileDialog>
+#include <QFontDatabase>
 #include <QMatrix>
+#include <QMenu>
 #include <QPainter>
 #include <QRegExp>
 #include <QContextMenuEvent>
@@ -45,19 +42,19 @@
 #include <QDesktopWidget>
 #include <QGraphicsScene>
 #include <QScrollBar>
+#include <QTemporaryFile>
 
 #include <math.h>
 
 #define LABEL_WIDTH 160
 #define LABEL_HEIGHT 90
 
-RevGraphView::RevGraphView(QObject *aListener, const svn::ClientP &_client, QWidget *parent)
+RevGraphView::RevGraphView(const svn::ClientP &_client, QWidget *parent)
     : QGraphicsView(parent)
     , m_Scene(0)
     , m_Marker(0)
     , m_Client(_client)
     , m_Selected(0)
-    , m_Listener(aListener)
     , m_dotTmpFile(0)
     , m_renderProcess(0)
     , m_xMargin(0)
@@ -187,19 +184,20 @@ void RevGraphView::dotExit(int exitcode, QProcess::ExitStatus exitStatus)
             int w = qRound(scaleX * dotWidth);
             int h = qRound(scaleY * dotHeight);
             m_xMargin = 50;
-            if (w < QApplication::desktop()->width()) {
-                m_xMargin += (QApplication::desktop()->width() - w) / 2;
+            const QDesktopWidget *dw = QApplication::desktop();
+            if (w < dw->width()) {
+                m_xMargin += (dw->width() - w) / 2;
             }
             m_yMargin = 50;
-            if (h < QApplication::desktop()->height()) {
-                m_yMargin += (QApplication::desktop()->height() - h) / 2;
+            if (h < dw->height()) {
+                m_yMargin += (dw->height() - h) / 2;
             }
             m_Scene = new QGraphicsScene(0.0, 0.0, qreal(w + 2 * m_xMargin), qreal(h + 2 * m_yMargin));
             m_Scene->setBackgroundBrush(Qt::white);
             continue;
         }
         if (m_dotTmpFile && (cmd != "node") && (cmd != "edge")) {
-            kWarning() << "Ignoring unknown command '" << cmd << "' from dot ("
+            qWarning() << "Ignoring unknown command '" << cmd << "' from dot ("
                        << m_dotTmpFile->fileName() << ":" << lineno << ")" << endl;
             continue;
         }
@@ -232,7 +230,7 @@ void RevGraphView::dotExit(int exitcode, QProcess::ExitStatus exitStatus)
             m_NodeList[nodeName] = t;
             t->setToolTip(toolTip(nodeName));
         } else {
-            QString node1Name, node2Name, label;
+            QString node1Name, node2Name;
             QString _x, _y;
             double x, y;
             QPolygonF pa;
@@ -457,8 +455,7 @@ void RevGraphView::dumpRevtree()
     }
     clear();
     m_dotOutput.clear();
-    m_dotTmpFile = new KTemporaryFile;
-    m_dotTmpFile->setSuffix(".dot");
+    m_dotTmpFile = new QTemporaryFile(QLatin1String("XXXXXX.dot"));
     m_dotTmpFile->setAutoRemove(true);
     m_dotTmpFile->open();
 
@@ -467,8 +464,8 @@ void RevGraphView::dumpRevtree()
         return;
     }
     QTextStream stream(m_dotTmpFile);
-    QFont f = KGlobalSettings::fixedFont();
-    QFontMetrics _fm(KGlobalSettings::fixedFont());
+    QFont f = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+    QFontMetrics _fm(f);
     int _fontsize = _fm.height();
     if (_fontsize < 0) {
         _fontsize = 10;
@@ -532,17 +529,17 @@ QString RevGraphView::toolTip(const QString &_nodename, bool full)const
     if (it == m_Tree.constEnd()) {
         return res;
     }
-    QStringList sp = it.value().Message.split('\n');
+    const QStringList sp = it.value().Message.split(QLatin1Char('\n'));
     QString sm;
-    if (sp.count() == 0) {
+    if (sp.isEmpty()) {
         sm = it.value().Message;
     } else {
         if (!full) {
-            sm = sp[0] + "...";
+            sm = sp[0] + QLatin1String("...");
         } else {
             for (int j = 0; j < sp.count(); ++j) {
                 if (j > 0) {
-                    sm += "<br>";
+                    sm += QLatin1String("<br/>");
                 }
                 sm += sp[j];
             }
@@ -552,26 +549,26 @@ QString RevGraphView::toolTip(const QString &_nodename, bool full)const
         sm.truncate(47);
         sm += "...";
     }
-    static QString csep = "</td><td>";
-    static QString rend = "</td></tr>";
-    static QString rstart = "<tr><td>";
-    res = QString("<html><body>");
+    static QLatin1String csep("</td><td>");
+    static QLatin1String rend("</td></tr>");
+    static QLatin1String rstart("<tr><td>");
+    res = QLatin1String("<html><body>");
 
     if (!full) {
-        res += QString("<b>%1</b>").arg(it.value().name);
+        res += QString(QLatin1String("<b>%1</b>")).arg(it.value().name);
         res += i18n("<br>Revision: %1<br>Author: %2<br>Date: %3<br>Log: %4</html>",
                     it.value().rev,
                     it.value().Author,
                     it.value().Date,
                     sm);
     } else {
-        res += "<table><tr><th colspan=\"2\"><b>" + it.value().name + "</b></th></tr>";
-        res += rstart;
-        res += i18n("<b>Revision</b>%1%2%3", csep, it.value().rev, rend);
-        res += rstart + i18n("<b>Author</b>%1%2%3", csep, it.value().Author, rend);
-        res += rstart + i18n("<b>Date</b>%1%2%3", csep, it.value().Date, rend);
-        res += rstart + i18n("<b>Log</b>%1%2%3", csep, sm, rend);
-        res += "</table></body></html>";
+        res += QLatin1String("<table><tr><th colspan=\"2\"><b>") + it.value().name + QLatin1String("</b></th></tr>") +
+            rstart +
+            i18n("<b>Revision</b>%1%2%3", csep, it.value().rev, rend) +
+            rstart + i18n("<b>Author</b>%1%2%3", csep, it.value().Author, rend) +
+            rstart + i18n("<b>Date</b>%1%2%3", csep, it.value().Date, rend) +
+            rstart + i18n("<b>Log</b>%1%2%3", csep, sm, rend) +
+            QLatin1String("</table></body></html>");
     }
     return res;
 }
@@ -590,7 +587,7 @@ void RevGraphView::updateSizes(QSize s)
     qreal cHeight = m_Scene->height() - 2 * m_yMargin + 100;
 
     // hide birds eye view if no overview needed
-    if (((cWidth < s.width()) && cHeight < s.height()) || m_NodeList.count() == 0) {
+    if (((cWidth < s.width()) && cHeight < s.height()) || m_NodeList.isEmpty()) {
         m_CompleteView->hide();
         return;
     }
@@ -837,7 +834,7 @@ void RevGraphView::contextMenuEvent(QContextMenuEvent *e)
 
     QAction *ac;
 
-    KMenu popup;
+    QMenu popup;
     if (i) {
         if (!i->source().isEmpty() && getAction(i->nodename()) != 'D') {
             popup.addAction(i18n("Diff to previous"))->setData(301);
@@ -885,10 +882,7 @@ void RevGraphView::contextMenuEvent(QContextMenuEvent *e)
     }
     break;
     case 201: {
-        QString fn = KFileDialog::getSaveFileName(KUrl(),
-                                                  i18n("image/png"),
-                                                  this
-                                                 );
+        QString fn = QFileDialog::getSaveFileName(this, i18n("Save tree as PNG"), QString(), i18n("Image (*.png)"));
         if (!fn.isEmpty()) {
             if (m_Marker) {
                 m_Marker->hide();
@@ -1006,5 +1000,5 @@ void RevGraphView::setBasePath(const QString &_path)
 
 void RevGraphView::slotClientException(const QString &what)
 {
-    KMessageBox::sorry(KApplication::activeModalWidget(), what, i18n("SVN Error"));
+    KMessageBox::sorry(QApplication::activeModalWidget(), what, i18n("SVN Error"));
 }

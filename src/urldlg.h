@@ -17,33 +17,34 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.         *
  ***************************************************************************/
-#ifndef URLDLG_H
-#define URLDLG_H
+#pragma once
 
-#include <kdialog.h>
-#include <kurl.h>
+#include <QDialog>
 
+namespace Ui
+{
+class UrlDlg;
+}
 class KUrlRequester;
+class QPushButton;
 
 /**
 @author Rajko Albrecht
 */
-class UrlDlg : public KDialog
+class UrlDlg : public QDialog
 {
     Q_OBJECT
 public:
-    explicit UrlDlg(QWidget *parent = 0);
+    static QUrl getUrl(QWidget *parent = 0);
+private:
+    explicit UrlDlg(QWidget *parent = nullptr);
     virtual ~UrlDlg();
-    KUrl selectedUrl();
-    static KUrl getUrl(QWidget *parent = 0);
-protected:
-    void init_dlg();
-    KUrlRequester *urlRequester_;
-    QWidget *m_plainPage;
-protected slots:
-    virtual void accept();
-    virtual void slotTextChanged(const QString &);
-    virtual void slotClear();
-};
 
-#endif
+private slots:
+    void accept() override final;
+    void slotTextChanged(const QString &);
+private:
+    QPushButton *m_pbClear;
+    KUrlRequester *m_urlRequester;
+    Ui::UrlDlg *m_ui;
+};

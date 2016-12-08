@@ -20,27 +20,22 @@
 #include "commitmsg_impl.h"
 #include "models/commitmodelhelper.h"
 #include "models/commitmodel.h"
-#include "src/settings/kdesvnsettings.h"
+#include "settings/kdesvnsettings.h"
 #include "depthselector.h"
+#include "ksvnwidgets/ksvndialog.h"
 
-#include <ktextedit.h>
-#include <kcombobox.h>
-#include <kdialog.h>
-#include <klocale.h>
-#include <kdebug.h>
-#include <kglobal.h>
-#include <kapplication.h>
-#include <kconfigbase.h>
-#include <kconfig.h>
-#include <kurlrequesterdialog.h>
-#include <kio/netaccess.h>
-#include <kmessagebox.h>
-#include <kfile.h>
-#include <kurlrequester.h>
-#include <KVBox>
+#include <KConfig>
+#include <KFile>
+#include <KIO/FileCopyJob>
+#include <KJobWidgets>
+#include <KLocalizedString>
+#include <KMessageBox>
+#include <KUrlRequester>
+#include <KUrlRequesterDialog>
 
 #include <QStringList>
 #include <QSortFilterProxyModel>
+#include <QTemporaryFile>
 #include <QCheckBox>
 #include <QLabel>
 #include <QLayout>
@@ -52,7 +47,6 @@
 
 QStringList Commitmsg_impl::sLogHistory = QStringList();
 QString Commitmsg_impl::sLastMessage;
-const QString Commitmsg_impl::groupName("logmsg_dlg_size");
 
 int Commitmsg_impl::smax_message_history = 0xFFFF;
 
@@ -117,7 +111,7 @@ Commitmsg_impl::~Commitmsg_impl()
     QList<int> list = m_MainSplitter->sizes();
     if (!m_hidden && list.count() == 2) {
         Kdesvnsettings::setCommit_splitter_height(list);
-        Kdesvnsettings::self()->writeConfig();
+        Kdesvnsettings::self()->save();
     }
     delete m_CurrentModel;
     delete m_SortModel;
@@ -263,109 +257,12 @@ void Commitmsg_impl::saveHistory(bool canceld)
 
 QString Commitmsg_impl::getLogmessage(bool *ok, svn::Depth *rec, bool *keep_locks, QWidget *parent)
 {
-    bool _ok, _keep_locks;
-    svn::Depth _depth = svn::DepthUnknown;
-    QString msg;
-
-    QPointer<KDialog> dlg(new KDialog(parent));
-    dlg->setCaption(i18n("Commit log"));
-    dlg->setButtons(KDialog::Ok | KDialog::Cancel);
-    dlg->setDefaultButton(KDialog::Ok);
-    dlg->showButtonSeparator(true);
-
-    KVBox *Dialog1Layout = new KVBox(dlg);
-    dlg->setMainWidget(Dialog1Layout);
-
-    Commitmsg_impl *ptr = new Commitmsg_impl(Dialog1Layout);
-    if (!rec) {
-        ptr->m_DepthSelector->hide();
-    }
-    if (!keep_locks) {
-        ptr->m_keepLocksButton->hide();
-    }
-    ptr->initHistory();
-    KConfigGroup _k(Kdesvnsettings::self()->config(), groupName);
-    dlg->restoreDialogSize(_k);
-    if (dlg->exec() != QDialog::Accepted) {
-        _ok = false;
-        /* avoid compiler warnings */
-        _keep_locks = false;
-    } else {
-        _ok = true;
-        _depth = ptr->getDepth();
-        _keep_locks = ptr->isKeeplocks();
-        msg = ptr->getMessage();
-    }
-    if (dlg) {
-        ptr->saveHistory(!_ok);
-        dlg->saveDialogSize(_k);
-        delete dlg;
-    }
-
-    if (ok) {
-        *ok = _ok;
-    }
-    if (rec) {
-        *rec = _depth;
-    }
-    if (keep_locks) {
-        *keep_locks = _keep_locks;
-    }
-    return msg;
+    return getLogmessageInternal(new Commitmsg_impl, ok, rec, keep_locks, nullptr, parent);
 }
 
 QString Commitmsg_impl::getLogmessage(const svn::CommitItemList &items, bool *ok, svn::Depth *rec, bool *keep_locks, QWidget *parent)
 {
-    bool _ok, _keep_locks;
-    svn::Depth _depth = svn::DepthUnknown;
-    QString msg;
-
-    QPointer<KDialog> dlg(new KDialog(parent));
-    dlg->setCaption(i18n("Commit log"));
-    dlg->setButtons(KDialog::Ok | KDialog::Cancel);
-    dlg->setDefaultButton(KDialog::Ok);
-    dlg->showButtonSeparator(true);
-
-    KVBox *Dialog1Layout = new KVBox(dlg);
-    dlg->setMainWidget(Dialog1Layout);
-
-    Commitmsg_impl *ptr = new Commitmsg_impl(items, Dialog1Layout);
-    if (!rec) {
-        ptr->m_DepthSelector->hide();
-    }
-    if (!keep_locks) {
-        ptr->m_keepLocksButton->hide();
-    }
-
-    ptr->initHistory();
-    KConfigGroup _k(Kdesvnsettings::self()->config(), groupName);
-    dlg->restoreDialogSize(_k);
-    if (dlg->exec() != QDialog::Accepted) {
-        _ok = false;
-        /* avoid compiler warnings */
-        _keep_locks = false;
-    } else {
-        _ok = true;
-        _depth = ptr->getDepth();
-        _keep_locks = ptr->isKeeplocks();
-        msg = ptr->getMessage();
-    }
-    if (dlg) {
-        ptr->saveHistory(!_ok);
-        dlg->saveDialogSize(_k);
-        delete dlg;
-    }
-
-    if (ok) {
-        *ok = _ok;
-    }
-    if (rec) {
-        *rec = _depth;
-    }
-    if (keep_locks) {
-        *keep_locks = _keep_locks;
-    }
-    return msg;
+    return getLogmessageInternal(new Commitmsg_impl(items), ok, rec, keep_locks, nullptr, parent);
 }
 
 QString Commitmsg_impl::getLogmessage(const CommitActionEntries &_on,
@@ -374,53 +271,62 @@ QString Commitmsg_impl::getLogmessage(const CommitActionEntries &_on,
                                       CommitActionEntries &_result,
                                       bool *ok, bool *keep_locks, QWidget *parent)
 {
-    bool _ok, _keep_locks;
-    QString msg;
-
-    QPointer<KDialog> dlg(new KDialog(parent));
-    dlg->setCaption(i18n("Commit log"));
-    dlg->setButtons(KDialog::Ok | KDialog::Cancel);
-    dlg->setDefaultButton(KDialog::Ok);
-    dlg->showButtonSeparator(true);
-
-    KVBox *Dialog1Layout = new KVBox(dlg);
-    dlg->setMainWidget(Dialog1Layout);
-
-    Commitmsg_impl *ptr = new Commitmsg_impl(_on, _off, Dialog1Layout);
-    ptr->m_DepthSelector->hide();
-    if (!keep_locks) {
-        ptr->m_keepLocksButton->hide();
-    }
-    ptr->initHistory();
+    Commitmsg_impl *ptr = new Commitmsg_impl(_on, _off);
     if (callback) {
         connect(ptr, SIGNAL(makeDiff(QString,svn::Revision,QString,svn::Revision,QWidget*)),
                 callback, SLOT(makeDiff(QString,svn::Revision,QString,svn::Revision,QWidget*)));
-        connect(ptr, SIGNAL(sigRevertItem(QStringList,bool)),
-                callback, SLOT(slotRevertItems(QStringList,bool)));
+        connect(ptr, SIGNAL(sigRevertItem(QStringList)),
+                callback, SLOT(slotRevertItems(QStringList)));
         connect(callback, SIGNAL(sigItemsReverted(QStringList)),
                 ptr, SLOT(slotItemReverted(QStringList)));
     }
-    KConfigGroup _k(Kdesvnsettings::self()->config(), groupName);
-    dlg->restoreDialogSize(_k);
+    return getLogmessageInternal(ptr, ok, nullptr, keep_locks, &_result, parent);
+}
+
+QString Commitmsg_impl::getLogmessageInternal(Commitmsg_impl *ptr, bool *ok, svn::Depth *rec, bool *keep_locks, CommitActionEntries *result, QWidget *parent)
+{
+    bool _ok, _keep_locks;
+    svn::Depth _depth = svn::DepthUnknown;
+    QString msg;
+
+    QPointer<KSvnSimpleOkDialog> dlg(new KSvnSimpleOkDialog(QStringLiteral("logmsg_dlg_size"), parent));
+    dlg->setWindowTitle(i18n("Commit log"));
+    dlg->setWithCancelButton();
+    dlg->addWidget(ptr);
+
+    if (!rec) {
+        ptr->m_DepthSelector->hide();
+    }
+    if (!keep_locks) {
+        ptr->m_keepLocksButton->hide();
+    }
+
+    ptr->initHistory();
     if (dlg->exec() != QDialog::Accepted) {
         _ok = false;
         /* avoid compiler warnings */
         _keep_locks = false;
     } else {
         _ok = true;
-        msg = ptr->getMessage();
+        _depth = ptr->getDepth();
         _keep_locks = ptr->isKeeplocks();
+        msg = ptr->getMessage();
     }
     if (dlg) {
         ptr->saveHistory(!_ok);
-        dlg->saveDialogSize(_k);
     }
+
     if (ok) {
         *ok = _ok;
     }
-    _result = ptr->checkedEntries();
+    if (rec) {
+        *rec = _depth;
+    }
     if (keep_locks) {
         *keep_locks = _keep_locks;
+    }
+    if (result) {
+        *result = ptr->checkedEntries();
     }
     delete dlg;
     return msg;
@@ -469,7 +375,7 @@ void Commitmsg_impl::slotRevertSelected()
         return;
     }
     QStringList what(ptr->actionEntry().name());
-    emit sigRevertItem(what, false);
+    emit sigRevertItem(what);
 }
 
 CommitModelNodePtr Commitmsg_impl::currentCommitItem(int column)
@@ -574,8 +480,8 @@ void Commitmsg_impl::insertFile(const QString &fname)
 void Commitmsg_impl::insertFile()
 {
     QString head = i18n("Select text file for insert");
-    QPointer<KUrlRequesterDialog> dlg(new KUrlRequesterDialog(QString(), head, this));
-    dlg->setCaption(head);
+    QPointer<KUrlRequesterDialog> dlg(new KUrlRequesterDialog(QUrl(), head, this));
+    dlg->setWindowTitle(head);
     KFile::Mode mode = static_cast<KFile::Mode>(KFile::File);
     dlg->urlRequester()->setMode(mode);
     dlg->urlRequester()->setWindowTitle(head);
@@ -584,7 +490,7 @@ void Commitmsg_impl::insertFile()
         delete dlg;
         return;
     }
-    KUrl _url = dlg->selectedUrl();
+    QUrl _url = dlg->selectedUrl();
     delete dlg;
     if (_url.isEmpty() || !_url.isValid()) {
         return;
@@ -592,12 +498,14 @@ void Commitmsg_impl::insertFile()
     if (_url.isLocalFile()) {
         insertFile(_url.path());
     } else {
-        QString tmpFile;
-        if (KIO::NetAccess::download(_url, tmpFile, this)) {
-            insertFile(tmpFile);
-            KIO::NetAccess::removeTempFile(tmpFile);
+        QTemporaryFile tf;
+        tf.open();
+        KIO::FileCopyJob *job = KIO::file_copy(_url, QUrl::fromLocalFile(tf.fileName()));
+        KJobWidgets::setWindow(job, this);
+        if (job->exec()) {
+            insertFile(tf.fileName());
         } else {
-            KMessageBox::error(this, KIO::NetAccess::lastErrorString());
+            KMessageBox::error(this, job->errorString());
         }
     }
 }

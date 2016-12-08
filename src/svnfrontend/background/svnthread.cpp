@@ -21,10 +21,7 @@
 #include "svnthread.h"
 #include "tcontextlistener.h"
 
-#include "src/svnqt/url.h"
-
-#include <kurl.h>
-#include <kdebug.h>
+#include "svnqt/url.h"
 
 SvnThread::SvnThread(QObject *_parent)
     : QThread()
@@ -68,10 +65,10 @@ void SvnThread::itemInfo(const QString &what, svn::InfoEntry &target, const svn:
         peg = svn::Revision::UNDEFINED;
         cacheKey = url;
     } else {
-        KUrl _uri = what;
-        QString prot = svn::Url::transformProtokoll(_uri.protocol());
-        _uri.setProtocol(prot);
-        url = _uri.prettyUrl();
+        // valid url
+        QUrl _uri(what);
+        _uri.setScheme(svn::Url::transformProtokoll(_uri.scheme()));
+        url = _uri.toString();
         if (peg == svn::Revision::UNDEFINED) {
             peg = rev;
         }
@@ -79,9 +76,8 @@ void SvnThread::itemInfo(const QString &what, svn::InfoEntry &target, const svn:
             peg = svn::Revision::HEAD;
         }
     }
-    svn::InfoEntries _e;
-    _e = (m_Svnclient->info(url, svn::DepthEmpty, rev, peg));
-    if (_e.count() > 0) {
+    const svn::InfoEntries _e = (m_Svnclient->info(url, svn::DepthEmpty, rev, peg));
+    if (!_e.isEmpty()) {
         target = _e[0];
     }
 }

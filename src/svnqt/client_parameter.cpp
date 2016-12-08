@@ -31,7 +31,7 @@ namespace svn
 //! internal data structure
 struct SVNQT_NOEXPORT CopyParameterData {
     CopyParameterData()
-        : _srcPath(), _srcRevision(), _pegRevision(), _destPath(), _asChild(false), _makeParent(false), _ignoreExternal(false), _force(false), _properties()
+        : _srcPath(), _srcRevision(), _pegRevision(), _destPath(), _asChild(false), _makeParent(false), _ignoreExternal(false), _properties()
     {
     }
     Targets  _srcPath;
@@ -41,8 +41,6 @@ struct SVNQT_NOEXPORT CopyParameterData {
     bool _asChild;
     bool _makeParent;
     bool _ignoreExternal;
-    //! used for move operation instead of copy
-    bool _force;
     PropertiesMap _properties;
 };
 
@@ -64,7 +62,6 @@ GETSET(CopyParameter, PropertiesMap, _properties, properties);
 
 GETSETSI(CopyParameter, bool, _asChild, asChild);
 GETSETSI(CopyParameter, bool, _makeParent, makeParent);
-GETSETSI(CopyParameter, bool, _force, force);
 GETSETSI(CopyParameter, bool, _ignoreExternal, ignoreExternal);
 
 struct SVNQT_NOEXPORT DiffParameterData {
@@ -102,22 +99,22 @@ DiffParameter::DiffParameter()
 DiffParameter::~DiffParameter()
 {}
 
-GETSET(DiffParameter, Path, _path1, path1);
-GETSET(DiffParameter, Path, _path2, path2);
-GETSET(DiffParameter, Path, _tmpPath, tmpPath);
-GETSET(DiffParameter, Path, _relativeTo, relativeTo);
-GETSET(DiffParameter, Revision, _peg_revision, peg);
-GETSET(DiffParameter, Revision, _rev1, rev1);
-GETSET(DiffParameter, Revision, _rev2, rev2);
-GETSET(DiffParameter, StringArray, _changeList, changeList);
-GETSET(DiffParameter, StringArray, _extra, extra);
+GETSET(DiffParameter, Path, _path1, path1)
+GETSET(DiffParameter, Path, _path2, path2)
+GETSET(DiffParameter, Path, _tmpPath, tmpPath)
+GETSET(DiffParameter, Path, _relativeTo, relativeTo)
+GETSET(DiffParameter, Revision, _peg_revision, peg)
+GETSET(DiffParameter, Revision, _rev1, rev1)
+GETSET(DiffParameter, Revision, _rev2, rev2)
+GETSET(DiffParameter, StringArray, _changeList, changeList)
+GETSET(DiffParameter, StringArray, _extra, extra)
 
-GETSETSI(DiffParameter, Depth, _depth, depth);
-GETSETSI(DiffParameter, bool, _ignoreAncestry, ignoreAncestry);
-GETSETSI(DiffParameter, bool, _ignore_contenttype, ignoreContentType);
-GETSETSI(DiffParameter, bool, _noDiffDeleted, noDiffDeleted);
-GETSETSI(DiffParameter, bool, _copies_as_adds, copies_as_adds);
-GETSETSI(DiffParameter, bool, _git_diff_format, git_diff_format);
+GETSETSI(DiffParameter, Depth, _depth, depth)
+GETSETSI(DiffParameter, bool, _ignoreAncestry, ignoreAncestry)
+GETSETSI(DiffParameter, bool, _ignore_contenttype, ignoreContentType)
+GETSETSI(DiffParameter, bool, _noDiffDeleted, noDiffDeleted)
+GETSETSI(DiffParameter, bool, _copies_as_adds, copies_as_adds)
+GETSETSI(DiffParameter, bool, _git_diff_format, git_diff_format)
 
 struct StatusParameterData {
     StatusParameterData(const Path &path)
@@ -143,16 +140,16 @@ StatusParameter::StatusParameter(const Path &path)
 StatusParameter::~StatusParameter()
 {}
 
-GETSET(StatusParameter, Path, _path, path);
-GETSET(StatusParameter, Revision, _revision, revision);
-GETSET(StatusParameter, StringArray, _changeList, changeList);
+GETSET(StatusParameter, Path, _path, path)
+GETSET(StatusParameter, Revision, _revision, revision)
+GETSET(StatusParameter, StringArray, _changeList, changeList)
 
-GETSETSI(StatusParameter, Depth, _depth, depth);
-GETSETSI(StatusParameter, bool, _getAll, all);
-GETSETSI(StatusParameter, bool, _update, update);
-GETSETSI(StatusParameter, bool, _noIgnore, noIgnore);
-GETSETSI(StatusParameter, bool, _ignoreExternals, ignoreExternals);
-GETSETSI(StatusParameter, bool, _detailedRemote, detailedRemote);
+GETSETSI(StatusParameter, Depth, _depth, depth)
+GETSETSI(StatusParameter, bool, _getAll, all)
+GETSETSI(StatusParameter, bool, _update, update)
+GETSETSI(StatusParameter, bool, _noIgnore, noIgnore)
+GETSETSI(StatusParameter, bool, _ignoreExternals, ignoreExternals)
+GETSETSI(StatusParameter, bool, _detailedRemote, detailedRemote)
 
 struct LogParameterData {
 public:
@@ -246,13 +243,13 @@ public:
     MergeParameterData()
         : _path1(), _path2(), _localPath(),
           _peg(Revision::UNDEFINED), _ranges(),
-          _force(false), _notice_ancestry(true), _dry_run(false), _record_only(false), _reintegrate(false),
+          _force(false), _notice_ancestry(true), _dry_run(false), _record_only(false), _reintegrate(false), _allow_mixed_rev(false),
           _depth(DepthInfinity), _merge_options()
     {}
     Path _path1, _path2, _localPath;
     Revision _peg;
     RevisionRanges _ranges;
-    bool _force, _notice_ancestry, _dry_run, _record_only, _reintegrate;
+    bool _force, _notice_ancestry, _dry_run, _record_only, _reintegrate, _allow_mixed_rev;
     Depth _depth;
     StringArray _merge_options;
 };
@@ -277,6 +274,7 @@ GETSETSI(MergeParameter, bool, _dry_run, dry_run);
 GETSETSI(MergeParameter, bool, _record_only, record_only);
 GETSETSI(MergeParameter, Depth, _depth, depth);
 GETSETSI(MergeParameter, bool, _reintegrate, reintegrate);
+GETSETSI(MergeParameter, bool, _allow_mixed_rev, allow_mixed_rev);
 
 const RevisionRange &MergeParameter::revisionRange()const
 {
@@ -303,13 +301,20 @@ const Revision &MergeParameter::revision2()const
 
 struct CheckoutParameterData {
     CheckoutParameterData()
-        : _moduleName(), _destination(), _revision(Revision::UNDEFINED), _peg(Revision::UNDEFINED), _depth(DepthInfinity),
-          _ignoreExternals(false), _overWrite(false), _nativeEol(QString())
+        : _moduleName()
+        , _destination()
+        , _revision(Revision::UNDEFINED)
+        , _peg(Revision::UNDEFINED)
+        , _depth(DepthInfinity)
+        , _ignoreExternals(false)
+        , _overWrite(false)
+        , _ignoreKeywords(false)
+        , _nativeEol(QString())
     {}
     Path _moduleName, _destination;
     Revision _revision, _peg;
     Depth _depth;
-    bool _ignoreExternals, _overWrite;
+    bool _ignoreExternals, _overWrite, _ignoreKeywords;
     QString _nativeEol;
 };
 
@@ -329,4 +334,5 @@ GETSET(CheckoutParameter, QString, _nativeEol, nativeEol)
 GETSETSI(CheckoutParameter, Depth, _depth, depth)
 GETSETSI(CheckoutParameter, bool, _ignoreExternals, ignoreExternals)
 GETSETSI(CheckoutParameter, bool, _overWrite, overWrite)
+GETSETSI(CheckoutParameter, bool, _ignoreKeywords, ignoreKeywords)
 }

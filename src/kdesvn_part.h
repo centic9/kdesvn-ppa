@@ -23,7 +23,8 @@
 
 #include "kdesvn-config.h"
 
-#include <kparts/part.h>
+#include <kparts/readonlypart.h>
+#include <kparts/readwritepart.h>
 #include <kparts/statusbarextension.h>
 #include <kparts/browserextension.h>
 
@@ -59,7 +60,6 @@ public:
      */
     virtual ~kdesvnpart();
     virtual bool closeUrl();
-    static KAboutData *createAboutData();
 
 Q_SIGNALS:
     void refreshTree();
@@ -68,7 +68,7 @@ Q_SIGNALS:
 public slots:
     virtual void slotDispPopup(const QString &, QWidget **target);
     virtual void slotFileProperties();
-    virtual bool openUrl(const KUrl &);
+    virtual bool openUrl(const QUrl &);
     virtual void slotSshAdd();
     virtual void showDbStatus();
 
@@ -86,7 +86,7 @@ protected slots:
     virtual void slotLogFollowNodes(bool);
     virtual void slotDisplayIgnored(bool);
     virtual void slotDisplayUnkown(bool);
-    virtual void slotUrlChanged(const QString &);
+    void slotUrlChanged(const QUrl &);
     void showAboutApplication();
     void appHelpActivated();
     virtual void slotShowSettings();

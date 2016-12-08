@@ -18,14 +18,8 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.         *
  ***************************************************************************/
 #include "rangeinput_impl.h"
-
-#include <qpushbutton.h>
-#include <qlayout.h>
-#include <qradiobutton.h>
-#include <knuminput.h>
-#include <kdatetimewidget.h>
-#include <klocale.h>
-#include <kdebug.h>
+#include <QPointer>
+#include <ksvnwidgets/ksvndialog.h>
 
 Rangeinput_impl::Rangeinput_impl(QWidget *parent)
     : QWidget(parent)
@@ -33,9 +27,11 @@ Rangeinput_impl::Rangeinput_impl(QWidget *parent)
 {
     setupUi(this);
 
-    m_startRevInput->setRange(0, INT_MAX, 1, false);
-    m_endRevInput->setRange(0, INT_MAX, 1, false);
+    m_startRevInput->setRange(0, INT_MAX);
+    m_startRevInput->setSingleStep(1);
     m_startRevInput->setValue(1);
+    m_endRevInput->setRange(0, INT_MAX);
+    m_endRevInput->setSingleStep(1);
     m_endRevInput->setValue(1);
     m_startDateInput->setDateTime(QDateTime::currentDateTime());
     m_stopDateInput->setDateTime(QDateTime::currentDateTime());
@@ -46,6 +42,24 @@ Rangeinput_impl::Rangeinput_impl(QWidget *parent)
 
 Rangeinput_impl::~Rangeinput_impl()
 {
+}
+
+bool Rangeinput_impl::getRevisionRange(revision_range &range, bool bWithWorking, bool bStartOnly, QWidget *parent)
+{
+    QPointer<KSvnSimpleOkDialog> dlg(new KSvnSimpleOkDialog(QStringLiteral("revisions_dlg"), parent));
+    dlg->setWindowTitle(i18n("Select revisions"));
+    dlg->setWithCancelButton();
+    Rangeinput_impl *rdlg(new Rangeinput_impl(dlg));
+    rdlg->setNoWorking(!bWithWorking);
+    rdlg->setStartOnly(bStartOnly);
+    dlg->addWidget(rdlg);
+    if (dlg->exec() == QDialog::Accepted) {
+        range = rdlg->getRange();
+        delete dlg;
+        return true;
+    }
+    delete dlg;
+    return false;
 }
 
 void Rangeinput_impl::startNumberToggled(bool how)
@@ -114,7 +128,7 @@ void Rangeinput_impl::stopNumberToggled(bool how)
     }
 }
 
-Rangeinput_impl::revision_range Rangeinput_impl::getRange()
+Rangeinput_impl::revision_range Rangeinput_impl::getRange() const
 {
     revision_range ret;
     if (m_startStartButton->isChecked()) {

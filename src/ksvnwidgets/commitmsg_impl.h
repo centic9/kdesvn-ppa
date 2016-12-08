@@ -20,9 +20,9 @@
 #ifndef COMMITMSG_IMPL_H
 #define COMMITMSG_IMPL_H
 
-#include "src/ksvnwidgets/ui_commitmessage.h"
-#include "src/ksvnwidgets/models/commitmodelfwd.h"
-#include "src/svnqt/commititem.h"
+#include "ksvnwidgets/ui_commitmessage.h"
+#include "ksvnwidgets/models/commitmodelfwd.h"
+#include "svnqt/commititem.h"
 
 
 class QStringList;
@@ -46,7 +46,7 @@ public:
     void saveHistory(bool canceld);
     void keepsLocks(bool);
 
-    static QString getLogmessage(bool *ok, svn::Depth *rec, bool *keeps_locks, QWidget *parent = 0);
+    static QString getLogmessage(bool *ok, svn::Depth *rec, bool *keep_locks, QWidget *parent = 0);
     static QString getLogmessage(const svn::CommitItemList &, bool *ok, svn::Depth *rec, bool *keep_locks, QWidget *parent = 0);
 
     static QString getLogmessage(const CommitActionEntries &, const CommitActionEntries &,
@@ -63,6 +63,8 @@ public:
 
     CommitModelNodePtr currentCommitItem(int column = 0);
 
+private:
+    static QString getLogmessageInternal(Commitmsg_impl *ptr, bool *ok, svn::Depth *rec, bool *keep_locks, CommitActionEntries *result, QWidget *parent);
 protected Q_SLOTS:
     void slotHistoryActivated(int);
     void slotUnmarkUnversioned();
@@ -79,7 +81,6 @@ protected Q_SLOTS:
 
 protected:
     static QStringList sLogHistory;
-    static const QString groupName;
     static QString sLastMessage;
     static int smax_message_history;
     bool m_hidden;
@@ -96,7 +97,7 @@ protected:
 
 Q_SIGNALS:
     void makeDiff(const QString &, const svn::Revision &, const QString &, const svn::Revision &, QWidget *);
-    void sigRevertItem(const QStringList &, bool);
+    void sigRevertItem(const QStringList &);
 };
 
 #endif

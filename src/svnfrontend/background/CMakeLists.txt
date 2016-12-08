@@ -18,8 +18,6 @@
  #   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.         #
 ############################################################################
 
-include_directories(${CMAKE_BINARY_DIR}/src/svnqt)
-
 set (backgroundsrc
     fillcachethread.cpp
     fillcachethread.h
@@ -38,9 +36,8 @@ add_library(svnbackground STATIC
     ${backgroundsrc}
 )
 
-
 target_link_libraries(svnbackground
-    ${QT_QTCORE_LIBRARY}
+    Qt5::Core
     svnfrontend
     svnqt
 )

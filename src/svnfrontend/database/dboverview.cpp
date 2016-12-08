@@ -22,92 +22,79 @@
  * history and logs, available at http://kdesvn.alwins-world.de.           *
  ***************************************************************************/
 #include "dboverview.h"
+#include "ui_dboverview.h"
+
 #include "dbsettings.h"
-#include "src/svnqt/cache/ReposConfig.h"
-#include "src/svnqt/cache/LogCache.h"
-#include "src/svnqt/cache/ReposLog.h"
-#include "src/svnqt/cache/DatabaseException.h"
-#include "src/svnfrontend/fronthelpers/createdlg.h"
-#include "src/svnqt/client.h"
+#include "svnqt/cache/LogCache.h"
+#include "svnqt/cache/ReposLog.h"
+#include "svnqt/cache/DatabaseException.h"
+#include "svnqt/client.h"
 #include "helpers/stringhelper.h"
+#include "helpers/kdesvn_debug.h"
 
 #include <QPointer>
 #include <QStringListModel>
 #include <QItemSelectionModel>
 
-#include <KDebug>
 #include <KMessageBox>
-#include <KLocale>
+#include <KLocalizedString>
 
-class DbOverViewData
+DbOverview::DbOverview(const svn::ClientP &aClient, QWidget *parent)
+    : KSvnDialog(QLatin1String("db_overview_dlg"), parent)
+    , m_clientP(aClient)
+    , m_repo_model(new QStringListModel(this))
+    , m_ui(new Ui::DBOverView)
 {
+    m_ui->setupUi(this);
+    setDefaultButton(m_ui->buttonBox->button(QDialogButtonBox::Close));
+    connect(m_ui->buttonBox->button(QDialogButtonBox::Close), SIGNAL(clicked(bool)),
+            this, SLOT(accept()));
 
-public:
-    QStringListModel *repo_model;
-    svn::ClientP _Client;
-
-    DbOverViewData()
-    {
-        repo_model = new QStringListModel();
-    }
-    ~DbOverViewData()
-    {
-        delete repo_model;
-    }
-};
-
-DbOverview::DbOverview(QWidget *parent)
-    : QWidget(parent)
-{
-    setupUi(this);
     enableButtons(false);
-    _data = new DbOverViewData;
 
     try {
-        _data->repo_model->setStringList(svn::cache::LogCache::self()->cachedRepositories());
+        m_repo_model->setStringList(svn::cache::LogCache::self()->cachedRepositories());
     } catch (const svn::cache::DatabaseException &e) {
-        kDebug() << e.msg() << endl;
+        qCDebug(KDESVN_LOG) << e.msg() << endl;
     }
 
-    m_ReposListView->setModel(_data->repo_model);
-    QItemSelectionModel *_sel = m_ReposListView->selectionModel();
+    m_ui->m_ReposListView->setModel(m_repo_model);
+    QItemSelectionModel *_sel = m_ui->m_ReposListView->selectionModel();
     if (_sel) {
-        connect(_sel, SIGNAL(selectionChanged(QItemSelection,QItemSelection)), this, SLOT(itemActivated(QItemSelection,QItemSelection)));
+        connect(_sel, SIGNAL(selectionChanged(QItemSelection,QItemSelection)),
+                this, SLOT(itemActivated(QItemSelection,QItemSelection)));
     }
+    connect(m_ui->m_DeleteCacheButton, SIGNAL(clicked(bool)),
+            this, SLOT(deleteCacheItems()));
+    connect(m_ui->m_DeleteRepositoryButton, SIGNAL(clicked(bool)),
+            this, SLOT(deleteRepository()));
+    connect(m_ui->m_SettingsButton, SIGNAL(clicked(bool)),
+            this, SLOT(repositorySettings()));
+    m_ui->m_StatisticButton->setVisible(false);
+    // t.b.d
+    //connect(m_ui->m_StatisticButton, SIGNAL(clicked(bool)),
+    //        this, SLOT(repositoryStatistics()));
 }
 
 DbOverview::~DbOverview()
 {
-    delete _data;
+    delete m_ui;
 }
 
-void DbOverview::showDbOverview(const svn::ClientP &aClient)
+void DbOverview::showDbOverview(const svn::ClientP &aClient, QWidget *parent)
 {
-    DbOverview *ptr = 0;
-    static const char cfg_text[] = "db_overview_dlg";
-    KConfigGroup _kc(Kdesvnsettings::self()->config(), QLatin1String(cfg_text));
-    QPointer<KDialog> dlg(createDialog(&ptr, i18n("Overview about cache database content"), KDialog::Close, QLatin1String(cfg_text)));
-    ptr->setClient(aClient);
-    dlg->restoreDialogSize(_kc);
+//  i18n("Overview about cache database content")
+    QPointer<DbOverview> dlg(new DbOverview(aClient, parent ? parent : QApplication::activeModalWidget()));
     dlg->exec();
-    if (dlg) {
-        dlg->saveDialogSize(_kc);
-        _kc.sync();
-        delete dlg;
-    }
-}
-
-void DbOverview::setClient(const svn::ClientP &aClient)
-{
-    _data->_Client = aClient;
+    delete dlg;
 }
 
 void DbOverview::enableButtons(bool how)
 {
-    m_DeleteCacheButton->setEnabled(how);
-    m_DeleteRepositoryButton->setEnabled(how);
-    m_SettingsButton->setEnabled(how);
-    m_StatisticButton->setEnabled(how);
+    m_ui->m_DeleteCacheButton->setEnabled(how);
+    m_ui->m_DeleteRepositoryButton->setEnabled(how);
+    m_ui->m_SettingsButton->setEnabled(how);
+    m_ui->m_StatisticButton->setEnabled(how);
 }
 
 void DbOverview::itemActivated(const QItemSelection &indexes, const QItemSelection &deindexes)
@@ -117,7 +104,7 @@ void DbOverview::itemActivated(const QItemSelection &indexes, const QItemSelecti
     enableButtons(false);
     QModelIndexList _indexes = indexes.indexes();
     if (_indexes.count() != 1) {
-        kDebug() << "Handle only with single selection" << endl;
+        qCDebug(KDESVN_LOG) << "Handle only with single selection" << endl;
         return;
     }
     genInfo(_indexes[0].data().toString());
@@ -126,14 +113,14 @@ void DbOverview::itemActivated(const QItemSelection &indexes, const QItemSelecti
 
 void DbOverview::genInfo(const QString &repo)
 {
-    svn::cache::ReposLog rl(_data->_Client, repo);
+    svn::cache::ReposLog rl(m_clientP, repo);
     QString msg = i18n("Log cache holds %1 log entries and consumes %2 on disk.", rl.count(), helpers::ByteToString(rl.fileSize()));
-    m_RepostatusBrowser->setText(msg);
+    m_ui->m_RepostatusBrowser->setText(msg);
 }
 
 QString DbOverview::selectedRepository()const
 {
-    QModelIndexList _indexes = m_ReposListView->selectionModel()->selectedIndexes();
+    const QModelIndexList _indexes = m_ui->m_ReposListView->selectionModel()->selectedIndexes();
     if (_indexes.size() != 1) {
         return QString();
     }
@@ -141,36 +128,39 @@ QString DbOverview::selectedRepository()const
 }
 
 void DbOverview::deleteCacheItems()
-{
-    int i = KMessageBox::questionYesNo(this, i18n("Really clean cache for repository\n%1?", selectedRepository()), i18n("Clean repository cache"));
+  {
+    KMessageBox::ButtonCode i = KMessageBox::questionYesNo(this,
+                                                           i18n("Really clean cache for repository\n%1?", selectedRepository()),
+                                                           i18n("Clean repository cache"));
     if (i != KMessageBox::Yes) {
         return;
     }
     try {
-        svn::cache::ReposLog rl(_data->_Client, selectedRepository());
+        svn::cache::ReposLog rl(m_clientP, selectedRepository());
         rl.cleanLogEntries();
     } catch (const svn::cache::DatabaseException &e) {
-        kDebug() << e.msg();
+        qCDebug(KDESVN_LOG) << e.msg();
     }
     genInfo(selectedRepository());
 }
 
 void DbOverview::deleteRepository()
 {
-    int i = KMessageBox::questionYesNo(this, i18n("Really clean cache and data for repository\n%1?", selectedRepository()), i18n("Delete repository"));
+    KMessageBox::ButtonCode i = KMessageBox::questionYesNo(this,
+                                                           i18n("Really clean cache and data for repository\n%1?", selectedRepository()),
+                                                           i18n("Delete repository"));
     if (i != KMessageBox::Yes) {
         return;
     }
-
     try {
         svn::cache::LogCache::self()->deleteRepository(selectedRepository());
-        _data->repo_model->setStringList(svn::cache::LogCache::self()->cachedRepositories());
+        m_repo_model->setStringList(svn::cache::LogCache::self()->cachedRepositories());
     } catch (const svn::cache::DatabaseException &e) {
-        kDebug() << e.msg() << endl;
+        qCDebug(KDESVN_LOG) << e.msg() << endl;
     }
 }
 
 void DbOverview::repositorySettings()
 {
-    DbSettings::showSettings(selectedRepository());
+    DbSettings::showSettings(selectedRepository(), this);
 }

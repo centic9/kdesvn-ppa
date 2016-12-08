@@ -20,48 +20,41 @@
 
 #include "kdesvnview.h"
 #include "svnfrontend/maintreewidget.h"
-#include "svnfrontend/createrepo_impl.h"
+#include "svnfrontend/createrepodlg.h"
 #include "svnfrontend/dumprepo_impl.h"
 #include "svnfrontend/hotcopydlg_impl.h"
 #include "svnfrontend/loaddmpdlg_impl.h"
 #include "svnfrontend/stopdlg.h"
 #include "svnfrontend/fronthelpers/propertylist.h"
-#include "src/settings/kdesvnsettings.h"
-#include "src/svnqt/url.h"
-#include "src/svnqt/repository.h"
-#include "src/svnqt/version_check.h"
-#include "src/svnqt/svnqttypes.h"
+#include "settings/kdesvnsettings.h"
+#include "svnqt/url.h"
+#include "svnqt/repository.h"
+#include "svnqt/version_check.h"
+#include "svnqt/svnqttypes.h"
 
-#include <QPainter>
-#include <QLayout>
 #include <QFileInfo>
+#include <QMenu>
+#include <QProgressBar>
 #include <QSplitter>
+#include <QTemporaryFile>
+#include <QTextBrowser>
 
-#include <kurl.h>
-#include <ktrader.h>
-#include <klibloader.h>
-#include <kmessagebox.h>
-#include <krun.h>
-#include <klocale.h>
-#include <ktextbrowser.h>
-#include <kdebug.h>
-#include <kactioncollection.h>
-#include <kshortcut.h>
-#include <kdialog.h>
-#include <kprogressdialog.h>
-#include <kvbox.h>
-#include <kio/netaccess.h>
+#include <KActionCollection>
+#include <KIO/FileCopyJob>
+#include <KJobWidgets>
+#include <KLocalizedString>
+#include <KMessageBox>
 
 kdesvnView::kdesvnView(KActionCollection *aCollection, QWidget *parent, bool full)
     : QWidget(parent), svn::repository::RepositoryListener()
     , m_Collection(aCollection)
     , m_currentUrl()
+    , m_CacheProgressBar(nullptr)
     , m_ReposCancel(false)
 {
     Q_UNUSED(full);
     setFocusPolicy(Qt::StrongFocus);
     setupActions();
-    m_CacheProgressBar = 0;
 
     m_topLayout = new QVBoxLayout(this);
 
@@ -74,7 +67,10 @@ kdesvnView::kdesvnView(KActionCollection *aCollection, QWidget *parent, bool ful
     m_infoSplitter = new QSplitter(m_Splitter);
     m_infoSplitter->setOrientation(Qt::Horizontal);
     m_infoSplitter->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    m_LogWindow = new KTextBrowser(m_infoSplitter);
+    m_LogWindow = new QTextBrowser(m_infoSplitter);
+    m_LogWindow->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(m_LogWindow, SIGNAL(customContextMenuRequested(QPoint)),
+            this, SLOT(onCustomLogWindowContextMenuRequested(QPoint)));
     Propertylist *pl = new Propertylist(m_infoSplitter);
     pl->setCommitchanges(true);
     pl->addCallback(m_TreeWidget);
@@ -90,8 +86,8 @@ kdesvnView::kdesvnView(KActionCollection *aCollection, QWidget *parent, bool ful
     connect(m_TreeWidget, SIGNAL(changeCaption(QString)), this, SLOT(slotSetTitle(QString)));
     connect(m_TreeWidget, SIGNAL(sigShowPopup(QString,QWidget**)), this, SLOT(slotDispPopup(QString,QWidget**)));
     connect(m_TreeWidget, SIGNAL(sigUrlOpend(bool)), parent, SLOT(slotUrlOpened(bool)));
-    connect(m_TreeWidget, SIGNAL(sigSwitchUrl(KUrl)), this, SIGNAL(sigSwitchUrl(KUrl)));
-    connect(m_TreeWidget, SIGNAL(sigUrlChanged(QString)), this, SLOT(slotUrlChanged(QString)));
+    connect(m_TreeWidget, SIGNAL(sigSwitchUrl(QUrl)), this, SIGNAL(sigSwitchUrl(QUrl)));
+    connect(m_TreeWidget, &MainTreeWidget::sigUrlChanged, this, &kdesvnView::slotUrlChanged);
     connect(m_TreeWidget, SIGNAL(sigCacheStatus(qlonglong,qlonglong)), this, SLOT(fillCacheStatus(qlonglong,qlonglong)));
     connect(m_TreeWidget, SIGNAL(sigExtraStatusMessage(QString)), this, SIGNAL(sigExtraStatusMessage(QString)));
 
@@ -128,24 +124,24 @@ void kdesvnView::slotSavestate()
     }
 }
 
-void kdesvnView::slotUrlChanged(const QString &url)
+void kdesvnView::slotUrlChanged(const QUrl &url)
 {
     m_currentUrl = url;
-    slotSetTitle(url);
+    slotSetTitle(url.toString());
     emit sigUrlChanged(url);
     slotOnURL(i18n("Repository opened"));
 }
 
-QString kdesvnView::currentUrl()
+QUrl kdesvnView::currentUrl() const
 {
     return m_currentUrl;
 }
 
-bool kdesvnView::openUrl(const KUrl &url)
+bool kdesvnView::openUrl(const QUrl &url)
 {
     /* transform of url must be done in part! otherwise we will run into different troubles! */
     m_currentUrl.clear();
-    KUrl _url(url);
+    QUrl _url(url);
     bool open = false;
     if (_url.isLocalFile()) {
         QString query = _url.query();
@@ -160,15 +156,15 @@ bool kdesvnView::openUrl(const KUrl &url)
             _url.setQuery(query);
         }
     } else {
-        if (!svn::Url::isValid(url.protocol())) {
+        if (!svn::Url::isValid(url.scheme())) {
             return open;
         }
     }
     m_LogWindow->clear();
-    slotSetTitle(url.prettyUrl());
+    slotSetTitle(url.toString());
     if (m_TreeWidget->openUrl(url)) {
         slotOnURL(i18n("Repository opened"));
-        m_currentUrl = url.url();
+        m_currentUrl = url;
         open = true;
     } else {
         QString t = m_TreeWidget->lastError();
@@ -227,38 +223,28 @@ void kdesvnView::slotSettingsChanged()
  */
 void kdesvnView::slotCreateRepo()
 {
-    QPointer<KDialog> dlg(new KDialog(QApplication::activeModalWidget()));
-    dlg->setCaption(i18n("Create new repository"));
-    dlg->setButtons(KDialog::Ok | KDialog::Cancel);
-
-    QWidget *Dialog1Layout = new KVBox(dlg);
-    dlg->setMainWidget(Dialog1Layout);
-    //dlg->makeVBoxMainWidget();
-    Createrepo_impl *ptr = new Createrepo_impl(Dialog1Layout);
-    KConfigGroup _kc(Kdesvnsettings::self()->config(), "create_repo_size");
-    dlg->restoreDialogSize(_kc);
+    QPointer<CreaterepoDlg> dlg(new CreaterepoDlg(this));
     if (dlg->exec() != QDialog::Accepted) {
         delete dlg;
         return;
     }
-    dlg->saveDialogSize(_kc, KConfigGroup::Normal);
-    svn::repository::Repository *_rep = new svn::repository::Repository(this);
+    QScopedPointer<svn::repository::Repository> _rep(new svn::repository::Repository(this));
     bool ok = true;
-    bool createdirs;
-    QString path = ptr->targetDir();
     closeMe();
     try {
-        _rep->CreateOpen(ptr->parameter());
+        _rep->CreateOpen(dlg->parameter());
     } catch (const svn::ClientException &e) {
         slotAppendLog(e.msg());
         ok = false;
     }
-    createdirs = ptr->createMain();
-    delete dlg;
-    delete _rep;
     if (!ok) {
+        delete dlg;
         return;
     }
+    bool createdirs = dlg->createMain();
+    // repo is created on a local path
+    const QUrl path = QUrl::fromLocalFile(dlg->targetDir());
+    delete dlg;
     openUrl(path);
     if (createdirs) {
         emit sigMakeBaseDirs();
@@ -267,20 +253,16 @@ void kdesvnView::slotCreateRepo()
 
 void kdesvnView::slotHotcopy()
 {
-    QPointer<KDialog> dlg(new KDialog(KApplication::activeModalWidget()));
-    dlg->setCaption(i18n("Hotcopy a repository"));
-    dlg->setButtons(KDialog::Ok | KDialog::Cancel);
+    QPointer<KSvnSimpleOkDialog> dlg(new KSvnSimpleOkDialog(QStringLiteral("hotcopy_repo_size"), QApplication::activeModalWidget()));
+    dlg->setWindowTitle(i18n("Hotcopy a repository"));
+    dlg->setWithCancelButton();
 
-    QWidget *Dialog1Layout = new KVBox(dlg);
-    dlg->setMainWidget(Dialog1Layout);
-    HotcopyDlg_impl *ptr = new HotcopyDlg_impl(Dialog1Layout);
-    KConfigGroup _kc(Kdesvnsettings::self()->config(), "hotcopy_repo_size");
-    dlg->restoreDialogSize(_kc);
+    HotcopyDlg_impl *ptr = new HotcopyDlg_impl(dlg);
+    dlg->addWidget(ptr);
     if (dlg->exec() != QDialog::Accepted) {
         delete dlg;
         return;
     }
-    dlg->saveDialogSize(_kc, KConfigGroup::Normal);
     bool cleanlogs = ptr->cleanLogs();
     QString src = ptr->srcPath();
     QString dest = ptr->destPath();
@@ -298,22 +280,16 @@ void kdesvnView::slotHotcopy()
 
 void kdesvnView::slotLoaddump()
 {
-    QPointer<KDialog> dlg(new KDialog(this));
-    dlg->setCaption(i18n("Load a repository from a svndump"));
-    dlg->setButtons(KDialog::Ok | KDialog::Cancel);
-    QWidget *Dialog1Layout = new KVBox(dlg);
-    dlg->setMainWidget(Dialog1Layout);
+    QPointer<KSvnSimpleOkDialog> dlg(new KSvnSimpleOkDialog(QStringLiteral("loaddump_repo_size"), this));
+    dlg->setWindowTitle(i18n("Load a repository from a svndump"));
+    dlg->setWithCancelButton();
 
-    LoadDmpDlg_impl *ptr = new LoadDmpDlg_impl(Dialog1Layout);
-
-    KConfigGroup _kc(Kdesvnsettings::self()->config(), "loaddump_repo_size");
-    dlg->restoreDialogSize(_kc);
-    if (dlg->exec() != QDialog::Accepted)
-    {
+    LoadDmpDlg_impl *ptr(new LoadDmpDlg_impl(dlg));
+    dlg->addWidget(ptr);
+    if (dlg->exec() != QDialog::Accepted) {
         delete dlg;
         return;
     }
-    dlg->saveDialogSize(_kc, KConfigGroup::Normal);
     svn::repository::Repository _rep(this);
     m_ReposCancel = false;
 
@@ -338,20 +314,20 @@ void kdesvnView::slotLoaddump()
         break;
     }
 
-    KUrl _uri = ptr->dumpFile();
+    const QUrl _uri = ptr->dumpFile();
     QString _input;
-    QString tmpfile;
-    bool networked = false;
+    QTemporaryFile tmpfile;
     if (_uri.isLocalFile()) {
-        _input = _uri.path();
+        _input = _uri.toLocalFile();
     } else {
-        networked = true;
-        if (! KIO::NetAccess::download(_uri, tmpfile, this)) {
-            KMessageBox::error(this, KIO::NetAccess::lastErrorString());
-            KIO::NetAccess::removeTempFile(tmpfile);
+        tmpfile.open();
+        KIO::FileCopyJob *job = KIO::file_copy(_uri, QUrl::fromLocalFile(tmpfile.fileName()));
+        KJobWidgets::setWindow(job, this);
+        if (!job->exec()) {
+            KMessageBox::error(this, job->errorString());
             return;
         }
-        _input = tmpfile;
+        _input = tmpfile.fileName();
     }
 
     try {
@@ -361,37 +337,28 @@ void kdesvnView::slotLoaddump()
     } catch (const svn::ClientException &e) {
         slotAppendLog(e.msg());
     }
-    if (networked && tmpfile.length() > 0) {
-        KIO::NetAccess::removeTempFile(tmpfile);
-    }
     delete dlg;
 }
 
 void kdesvnView::slotDumpRepo()
 {
-    QPointer<KDialog> dlg(new KDialog(KApplication::activeModalWidget()));
-    dlg->setCaption(i18n("Dump a repository"));
-    dlg->setButtons(KDialog::Ok | KDialog::Cancel);
-    QWidget *Dialog1Layout = new KVBox(dlg);
-    dlg->setMainWidget(Dialog1Layout);
+    QPointer<KSvnSimpleOkDialog> dlg(new KSvnSimpleOkDialog(QStringLiteral("dump_repo_size"), QApplication::activeModalWidget()));
+    dlg->setWindowTitle(i18n("Dump a repository"));
+    dlg->setWithCancelButton();
 
-    DumpRepo_impl *ptr = new DumpRepo_impl(Dialog1Layout);
-    KConfigGroup _kc(Kdesvnsettings::self()->config(), "dump_repo_size");
-    dlg->restoreDialogSize(_kc);
+    DumpRepo_impl *ptr(new DumpRepo_impl(dlg));
+    dlg->addWidget(ptr);
     if (dlg->exec() != QDialog::Accepted) {
         delete dlg;
         return;
     }
-    dlg->saveDialogSize(_kc, KConfigGroup::Normal);
-    svn::repository::Repository *_rep = new svn::repository::Repository(this);
-    QString re, out;
-    bool incr, diffs;
-    re = ptr->reposPath();
-    out = ptr->targetFile();
-    incr = ptr->incremental();
-    diffs = ptr->use_deltas();
-    int s = ptr->startNumber();
-    int e = ptr->endNumber();
+
+    const QString re = ptr->reposPath();
+    const QString out = ptr->targetFile();
+    const bool incr = ptr->incremental();
+    const bool diffs = ptr->use_deltas();
+    const int s = ptr->startNumber();
+    const int e = ptr->endNumber();
 
     delete dlg;
 
@@ -406,12 +373,13 @@ void kdesvnView::slotDumpRepo()
         en = e;
     }
 
+    svn::repository::Repository *_rep(new svn::repository::Repository(this));
     try {
         _rep->Open(re);
     } catch (const svn::ClientException &e) {
         slotAppendLog(e.msg());
         delete _rep;
-        return ;
+        return;
     }
 
     try {
@@ -477,4 +445,16 @@ void kdesvnView::fillCacheStatus(qlonglong current, qlonglong max)
 void kdesvnView::stopCacheThreads()
 {
     m_TreeWidget->stopLogCache();
+}
+
+void kdesvnView::onCustomLogWindowContextMenuRequested(const QPoint &pos)
+{
+    QPointer<QMenu> menu = m_LogWindow->createStandardContextMenu();
+    QAction *clearAction = new QAction(tr("Clear"), menu.data());
+    clearAction->setEnabled(!m_LogWindow->toPlainText().isEmpty());
+    connect(clearAction, SIGNAL(triggered(bool)),
+            m_LogWindow, SLOT(clear()));
+    menu->addAction(clearAction);
+    menu->exec(m_LogWindow->mapToGlobal(pos));
+    delete menu;
 }

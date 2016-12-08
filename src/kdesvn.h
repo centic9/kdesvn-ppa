@@ -23,17 +23,15 @@
 
 #include "kdesvn-config.h"
 
-#include <kapplication.h>
 #include <kparts/mainwindow.h>
-#include <qtimer.h>
-#include <kbookmarkmanager.h>
+#include <kparts/readonlypart.h>
+#include <KBookmarks/KBookmarkManager>
+#include <KBookmarks/KBookmarkMenu>
+#include <KBookmarks/KBookmarkActionMenu>
 
-class KUrl;
 class KAction;
 class KActionMenu;
 class KToggleAction;
-class KBookmarkMenu;
-class KBookmarkActionMenu;
 
 /**
  * This class serves as the main window for kdesvn.  It handles the
@@ -58,7 +56,7 @@ public:
     virtual ~kdesvn();
 
     virtual void openBookmark(const KBookmark &bm, Qt::MouseButtons mb, Qt::KeyboardModifiers km);
-    virtual QString currentUrl() const;
+    virtual QUrl currentUrl() const;
     virtual QString currentTitle() const;
     void checkReload();
 
@@ -83,12 +81,12 @@ public Q_SLOTS:
     /**
      * Use this method to load whatever file/URL you have
      */
-    virtual void load(const KUrl &_url)
+    void load(const QUrl &_url)
     {
         load(_url, true);
     }
-    virtual void loadRescent(const KUrl &);
-    virtual void load(const KUrl &, bool);
+    void loadRescent(const QUrl &);
+    void load(const QUrl &, bool);
 
 private slots:
     void fileOpen();
@@ -97,14 +95,10 @@ private slots:
     void optionsShowStatusbar();
     void changeStatusbar(const QString &);
     void resetStatusBar();
-#if 0
-    void actionHovered(QAction *action);
-#endif
 
 private:
     void setupAccel();
     void setupActions();
-    void connectActionCollection(KActionCollection *coll);
 
     KActionMenu *m_FileMenu;
     QString m_bookmarkFile;

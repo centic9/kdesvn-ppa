@@ -17,29 +17,25 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.         *
  ***************************************************************************/
-#ifndef COMMANDLINE_H
-#define COMMANDLINE_H
+#pragma once
 
-#include <QObject>
+#include <QString>
 
-class KCmdLineArgs;
-class CommandLineData;
+class QCommandLineParser;
 
 /**
 @author Rajko Albrecht
 */
-class CommandLine: public QObject
+class CommandLine
 {
-    Q_OBJECT
 public:
-    explicit CommandLine(KCmdLineArgs *);
-    virtual ~CommandLine();
+    explicit CommandLine(const QCommandLineParser *parser);
+    ~CommandLine();
 
-    virtual int exec();
+    int exec();
 
 protected:
-    KCmdLineArgs *m_args;
-    CommandLineData *m_data;
+    void displayHelp();
+    const QCommandLineParser *m_parser;
+    QString cmd;
 };
-
-#endif

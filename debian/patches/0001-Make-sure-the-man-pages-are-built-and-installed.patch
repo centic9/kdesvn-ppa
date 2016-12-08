@@ -1,0 +1,80 @@
+From c96df705f48c0fab1fce3ac07616a2ed978ad612 Mon Sep 17 00:00:00 2001
+From: Michael Biebl <biebl@debian.org>
+Date: Fri, 9 Dec 2016 00:00:59 +0100
+Subject: [PATCH] Make sure the man pages are built and installed
+
+---
+ doc/de/CMakeLists.txt    | 2 ++
+ doc/en/CMakeLists.txt    | 2 ++
+ doc/nl/CMakeLists.txt    | 2 ++
+ doc/pt_BR/CMakeLists.txt | 2 ++
+ doc/sv/CMakeLists.txt    | 2 ++
+ doc/uk/CMakeLists.txt    | 2 ++
+ 6 files changed, 12 insertions(+)
+
+Index: b/doc/de/CMakeLists.txt
+===================================================================
+--- a/doc/de/CMakeLists.txt
++++ b/doc/de/CMakeLists.txt
+@@ -1,4 +1,6 @@
+ kdoctools_create_handbook(index.docbook
+                           INSTALL_DESTINATION ${HTML_INSTALL_DIR}/de
+                           SUBDIR kdesvn)
++kdoctools_create_manpage(man-kdesvn.1.docbook 1 INSTALL_DESTINATION ${MAN_INSTALL_DIR}/de)
++kdoctools_create_manpage(man-kdesvnaskpass.1.docbook 1 INSTALL_DESTINATION ${MAN_INSTALL_DIR}/de)
+ 
+Index: b/doc/en/CMakeLists.txt
+===================================================================
+--- a/doc/en/CMakeLists.txt
++++ b/doc/en/CMakeLists.txt
+@@ -1,4 +1,6 @@
+ kdoctools_create_handbook(index.docbook
+                           INSTALL_DESTINATION ${HTML_INSTALL_DIR}/en
+                           SUBDIR kdesvn)
++kdoctools_create_manpage(man-kdesvn.1.docbook 1 INSTALL_DESTINATION ${MAN_INSTALL_DIR})
++kdoctools_create_manpage(man-kdesvnaskpass.1.docbook 1 INSTALL_DESTINATION ${MAN_INSTALL_DIR})
+ 
+Index: b/doc/nl/CMakeLists.txt
+===================================================================
+--- a/doc/nl/CMakeLists.txt
++++ b/doc/nl/CMakeLists.txt
+@@ -1,4 +1,6 @@
+ kdoctools_create_handbook(index.docbook
+                           INSTALL_DESTINATION ${HTML_INSTALL_DIR}/nl
+                           SUBDIR kdesvn)
++kdoctools_create_manpage(man-kdesvn.1.docbook 1 INSTALL_DESTINATION ${MAN_INSTALL_DIR}/nl)
++kdoctools_create_manpage(man-kdesvnaskpass.1.docbook 1 INSTALL_DESTINATION ${MAN_INSTALL_DIR}/nl)
+ 
+Index: b/doc/pt_BR/CMakeLists.txt
+===================================================================
+--- a/doc/pt_BR/CMakeLists.txt
++++ b/doc/pt_BR/CMakeLists.txt
+@@ -1,4 +1,6 @@
+ kdoctools_create_handbook(index.docbook
+                           INSTALL_DESTINATION ${HTML_INSTALL_DIR}/pt_BR
+                           SUBDIR kdesvn)
++kdoctools_create_manpage(man-kdesvn.1.docbook 1 INSTALL_DESTINATION ${MAN_INSTALL_DIR}/pt_BR)
++kdoctools_create_manpage(man-kdesvnaskpass.1.docbook 1 INSTALL_DESTINATION ${MAN_INSTALL_DIR}/pt_BR)
+ 
+Index: b/doc/sv/CMakeLists.txt
+===================================================================
+--- a/doc/sv/CMakeLists.txt
++++ b/doc/sv/CMakeLists.txt
+@@ -1,4 +1,6 @@
+ kdoctools_create_handbook(index.docbook
+                           INSTALL_DESTINATION ${HTML_INSTALL_DIR}/sv
+                           SUBDIR kdesvn)
++kdoctools_create_manpage(man-kdesvn.1.docbook 1 INSTALL_DESTINATION ${MAN_INSTALL_DIR}/sv)
++kdoctools_create_manpage(man-kdesvnaskpass.1.docbook 1 INSTALL_DESTINATION ${MAN_INSTALL_DIR}/sv)
+ 
+Index: b/doc/uk/CMakeLists.txt
+===================================================================
+--- a/doc/uk/CMakeLists.txt
++++ b/doc/uk/CMakeLists.txt
+@@ -1,4 +1,6 @@
+ kdoctools_create_handbook(index.docbook
+                           INSTALL_DESTINATION ${HTML_INSTALL_DIR}/uk
+                           SUBDIR kdesvn)
++kdoctools_create_manpage(man-kdesvn.1.docbook 1 INSTALL_DESTINATION ${MAN_INSTALL_DIR}/uk)
++kdoctools_create_manpage(man-kdesvnaskpass.1.docbook 1 INSTALL_DESTINATION ${MAN_INSTALL_DIR}/uk)
+ 

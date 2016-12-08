@@ -1,29 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>RevertForm</class>
- <widget class="QWidget" name="RevertForm">
+ <widget class="QDialog" name="RevertForm">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>293</width>
-    <height>162</height>
+    <width>400</width>
+    <height>300</height>
    </rect>
   </property>
-  <property name="sizePolicy">
-   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-    <horstretch>0</horstretch>
-    <verstretch>0</verstretch>
-   </sizepolicy>
-  </property>
-  <property name="minimumSize">
-   <size>
-    <width>0</width>
-    <height>20</height>
-   </size>
-  </property>
   <property name="windowTitle">
-   <string>Revert</string>
+   <string>Revert entries</string>
   </property>
   <layout class="QVBoxLayout">
    <item>
@@ -49,6 +37,13 @@
      </property>
     </widget>
    </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
   </layout>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
@@ -56,12 +51,12 @@
   <customwidget>
    <class>DepthSelector</class>
    <extends>QWidget</extends>
-   <header>src/ksvnwidgets/depthselector.h</header>
+   <header>ksvnwidgets/depthselector.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
  <includes>
-  <include location="local">src/ksvnwidgets/depthselector.h</include>
+  <include location="local">ksvnwidgets/depthselector.h</include>
  </includes>
  <resources/>
  <connections/>

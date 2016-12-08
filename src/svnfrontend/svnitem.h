@@ -21,10 +21,10 @@
 #ifndef SVN_ITEM_H
 #define SVN_ITEM_H
 
-#include "src/svnqt/status.h"
-#include <kmimetype.h>
+#include "svnqt/status.h"
 #include <QString>
 #include <QDateTime>
+#include <QMimeType>
 #include <QPixmap>
 #include <QScopedPointer>
 #include <QList>
@@ -33,7 +33,6 @@ class SvnItemModelNode;
 class SvnItem_p;
 class SvnActions;
 class KFileItem;
-class KUrl;
 
 namespace svn
 {
@@ -49,9 +48,9 @@ public:
 
     virtual const QString &fullName()const;
     virtual const QString &shortName()const;
-    virtual const QString &Url()const;
-    virtual const KUrl &kdeName(const svn::Revision &);
-    virtual KMimeType::Ptr mimeType();
+    virtual const QUrl &Url()const;
+    virtual const QUrl &kdeName(const svn::Revision &);
+    virtual QMimeType mimeType();
     virtual const QDateTime &fullDate()const;
     virtual bool isDir()const;
     virtual bool isVersioned()const;

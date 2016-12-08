@@ -38,7 +38,10 @@
 // apr api
 #include <apr_tables.h>
 
+#include <QList>
+
 class QStringList;
+class QUrl;
 
 namespace svn
 {
@@ -65,39 +68,19 @@ public:
     Targets(const svn::Path &target);    //krazy:exclude=explicit
 
     /**
-     * Constructor from an APR array containing
-     * char *.
-     *
-     * @param targets APR array header
-     */
-    Targets(const apr_array_header_t *targets);    //krazy:exclude=explicit
-
-    /**
      * Constructor. Initializes list with just
      * one entry
      *
      * @param target
      */
     Targets(const QString &target = QString());    //krazy:exclude=explicit
-    /**
-     * Constructor. Initializes list with just
-     * one entry
-     *
-     * @param target
-     */
-    Targets(const char *target);    //krazy:exclude=explicit
-    /**
-     * Constructor. Convert stringlist into target list.
-     * @param targets
-     */
-    Targets(const QStringList &targets);    //krazy:exclude=explicit
 
     /**
      * Copy Constructor
      *
      * @param targets Source
      */
-    Targets(const Targets &targets);
+    Targets(const Targets &other);
 
     /**
      * Destructor
@@ -147,6 +130,11 @@ public:
      */
     const Path
     target(Paths::size_type which) const;
+
+    /** convenience functions
+     */
+    static Targets fromStringList(const QStringList &paths);
+    static Targets fromUrlList(const QList<QUrl> &urls);
 
 private:
     Paths m_targets;

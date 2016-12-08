@@ -117,7 +117,7 @@ public:
      * @return a Status with Statis.isVersioned = FALSE
      */
     virtual StatusPtr
-    singleStatus(const Path &path, bool update = false, const Revision revision = svn::Revision::HEAD) throw (ClientException) = 0;
+    singleStatus(const Path &path, bool update = false, const Revision &revision = svn::Revision::HEAD) throw (ClientException) = 0;
 
     /**
        * Executes a revision checkout.
@@ -134,7 +134,7 @@ public:
      */
     virtual void
     relocate(const Path &path, const Url &from_url,
-             const Url &to_url, bool recurse) throw (ClientException) = 0;
+             const Url &to_url, bool recurse, bool ignore_externals) throw (ClientException) = 0;
 
     /**
      * Sets entries for deletion.
@@ -328,14 +328,15 @@ public:
         const Revision &peg = Revision::UNDEFINED,
         bool sticky_depth = true,
         bool ignore_externals = false,
-        bool allow_unversioned = false
+        bool allow_unversioned = false,
+        bool ignore_ancestry = false
     ) throw (ClientException) = 0;
 
     /**
      * Import file or directory PATH into repository directory URL at
      * head.  This usually requires authentication, see Auth.
      * @param path path to import
-     * @param url
+     * @param importRepository
      * @param message log message.
      * @param depth kind of recurse operation
      * @param no_ignore if false, don't add items matching global ignore pattern (@since subversion 1.3)
@@ -486,7 +487,7 @@ public:
      * repository
      *
      * @param params svn::PropertiesParameter holding required values.
-     * Following is used:<br>
+     * Following is used:<br/>
      * <ul>
      * <li> svn::PropertiesParameter::propertyName()
      * <li> svn::PropertiesParameter::propertyValue()

@@ -26,11 +26,20 @@
 #define SVNQT_HELPER_H
 
 #include "svnqttypes.h"
+#include "pool.h"
 #include "revision.h"
+#include <svn_string.h>
 #include <svn_types.h>
 #include <svn_version.h>
 
 #include <iostream>
+
+#define SVN_VERSION_CHECK(major, minor, patch) ((major<<16)|(minor<<8)|(patch))
+#ifdef OVERRIDE_SVN_API_VERSION
+#define SVN_API_VERSION OVERRIDE_SVN_API_VERSION
+#else
+#define SVN_API_VERSION (SVN_VERSION_CHECK(SVN_VER_MAJOR, SVN_VER_MINOR, SVN_VER_PATCH))
+#endif
 
 namespace svn
 {
@@ -38,11 +47,10 @@ namespace internal
 {
 class DepthToSvn
 {
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 5)) || (SVN_VER_MAJOR > 1)
 protected:
     svn_depth_t _value;
 public:
-    explicit DepthToSvn(const svn::Depth &val): _value(svn_depth_unknown)
+    explicit DepthToSvn(const svn::Depth val): _value(svn_depth_unknown)
     {
         switch (val) {
         case DepthUnknown:
@@ -67,16 +75,14 @@ public:
         }
     }
 
-    operator svn_depth_t ()
+    operator svn_depth_t() const
     {
         return _value;
     }
-#endif
 };
 
 class RevisionRangesToHash
 {
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 5)) || (SVN_VER_MAJOR > 1)
 protected:
     RevisionRanges m_ranges;
 public:
@@ -95,7 +101,6 @@ public:
         }
         return ranges;
     }
-#endif
 };
 
 class Map2Hash
@@ -129,7 +134,7 @@ class Hash2Map
 {
     PropertiesMap _map;
 public:
-    Hash2Map(apr_hash_t *hash, const svn::Pool &pool)
+    Hash2Map(apr_hash_t *hash, apr_pool_t *pool)
         : _map()
     {
         if (hash != 0L) {

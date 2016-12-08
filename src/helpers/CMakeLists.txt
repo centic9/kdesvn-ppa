@@ -19,11 +19,28 @@
  ####
 
 set(helperssrc
+    kdesvn_debug.cpp
+    kdesvn_debug.h
     ktranslateurl.cpp
+    ktranslateurl.h
     sshagent.cpp
-    sub2qt.cpp
-   )
-
-file(GLOB hdr RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "*.h")
+    sshagent.h
+    stringhelper.h
+    windowgeometryhelper.cpp
+    windowgeometryhelper.h
+)
 
 add_library(kdesvnhelpers STATIC ${helperssrc} ${hdr})
+target_include_directories(kdesvnhelpers
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/../
+)
+target_link_libraries(kdesvnhelpers
+    PRIVATE
+        kdesvncfgreader
+        KF5::CoreAddons
+        Qt5::Widgets
+    PUBLIC
+        svnqt
+)
+

@@ -18,11 +18,6 @@
  #   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.         #
  ####
 
-include_directories(
-    ${CMAKE_BINARY_DIR}/src/svnqt
-    ${CMAKE_BINARY_DIR}/src/ksvnwidgets
-)
-
 set(kiosvn_src
     kiosvn.cpp
     kiolistener.cpp
@@ -36,17 +31,20 @@ set(kiosvn_hdr
     kiobytestream.h
     ../ksvnwidgets/pwstorage.h
 )
-qt4_add_dbus_interfaces( kiosvn_src ../kdesvnd/org.kde.kdesvnd.xml )
+qt5_add_dbus_interfaces( kiosvn_src ../kdesvnd/org.kde.kdesvnd.xml )
 
-kde4_add_plugin(kio_ksvn ${kiosvn_src} ${kiosvn_hdr})
+add_library(kio_ksvn MODULE ${kiosvn_src} ${kiosvn_hdr})
 
 target_link_libraries(kio_ksvn
     svnqt
     kdesvnhelpers
     kdesvncfgreader
-    ${KDE4_KIO_LIBS}
+    Qt5::DBus
+    Qt5::Widgets
+    KF5::I18n
+    KF5::KIOCore
+    KF5::Wallet
 )
-
 set_target_properties(kio_ksvn
     PROPERTIES
     LINK_FLAG "${LINK_NO_UNDEFINED}")

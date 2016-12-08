@@ -18,12 +18,8 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.         *
  ***************************************************************************/
 #include "displaysettings_impl.h"
-#include "src/settings/kdesvnsettings.h"
+#include "settings/kdesvnsettings.h"
 
-#include <qcheckbox.h>
-#include <qradiobutton.h>
-#include <klineedit.h>
-#include <kdebug.h>
 
 DisplaySettings_impl::DisplaySettings_impl(QWidget *parent)
     : QWidget(parent)

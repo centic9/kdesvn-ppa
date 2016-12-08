@@ -19,119 +19,39 @@
  ***************************************************************************/
 #include "ktranslateurl.h"
 
-#include <kglobal.h>
-#include <kstandarddirs.h>
-#include <kdebug.h>
-#include <kfileitem.h>
-#include <kdesktopfile.h>
-
-#include <qstringlist.h>
-#include <qdir.h>
+#include <QFileInfo>
+#include <QUrl>
+#include "helpers/kdesvn_debug.h"
 
 namespace helpers
 {
 namespace KTranslateUrl
 {
-static bool parseURL(const KUrl &url, QString &name, QString &path);
-static KUrl findSystemBase(const QString &name);
 
-KUrl translateSystemUrl(const KUrl &_url)
+QString makeKdeUrl(const QString &proto)
 {
-    QString proto = _url.protocol();
-
-    if (proto != QLatin1String("system")) {
-        return _url;
+    if (proto.startsWith(QLatin1String("svn+"))) {
+        return QLatin1Char('k') + proto;
     }
-    KGlobal::dirs()->addResourceType("system_entries",
-                                     KStandardDirs::kde_default("data") + "systemview");
-    QString name, path;
-    if (!parseURL(_url, name, path)) {
-        return _url;
+    if (proto == QLatin1String("svn")) {
+        return QLatin1String("ksvn");
     }
-    KUrl res = findSystemBase(name);
-    if (!res.isValid()) {
-        return _url;
-    }
-    res.addPath(path);
-    res.setQuery(_url.query());
-    return res;
+    return QLatin1String("ksvn+") + proto;
 }
 
-bool parseURL(const KUrl &url, QString &name, QString &path)
+QUrl string2Uri(const QString &what)
 {
-    const QString url_path = url.path();
-    int i = url_path.indexOf(QLatin1Char('/'), 1);
-    if (i > 0) {
-        name = url_path.mid(1, i - 1);
-        path = url_path.mid(i + 1);
-    } else {
-        name = url_path.mid(1);
-        path.clear();
+    // if the file is available in the local fs -> QUrl::fromLocalFile
+    QFileInfo fi(what);
+    if (fi.isAbsolute() || fi.exists()) {
+        return QUrl::fromLocalFile(fi.absoluteFilePath());
     }
-
-    return !name.isEmpty();
-}
-
-KUrl findSystemBase(const QString &filename)
-{
-    const QStringList dirList = KGlobal::dirs()->resourceDirs("system_entries");
-
-    QStringList::ConstIterator dirpath = dirList.constBegin();
-    QStringList::ConstIterator end = dirList.constEnd();
-    for (; dirpath != end; ++dirpath) {
-        QDir dir(*dirpath);
-        if (!dir.exists()) {
-            continue;
-        }
-
-        QStringList filenames
-            = dir.entryList(QDir::Files | QDir::Readable);
-
-        QStringList::ConstIterator name = filenames.constBegin();
-        QStringList::ConstIterator endf = filenames.constEnd();
-
-        for (; name != endf; ++name) {
-            const QString fn = filename + QLatin1String(".desktop");
-            if (*name == fn) {
-                KDesktopFile desktop(*dirpath + fn);
-                if (desktop.readUrl().isEmpty()) {
-                    KUrl url;
-                    url.setPath(desktop.readPath());
-                    return url;
-                }
-                return desktop.readUrl();
-            }
-        }
+    // not a local file, assume a url (which can also be a local file)
+    QUrl uri(what);
+    if (!uri.isLocalFile()) {
+        uri.setScheme(makeKdeUrl(uri.scheme()));
     }
-
-    return KUrl();
-}
-
-QString makeKdeUrl(const QString &_proto)
-{
-    QString proto;
-    if (_proto.startsWith(QLatin1String("svn+"))) {
-        proto = QLatin1Char('k') + _proto;
-    } else if (_proto == QLatin1String("svn")) {
-        proto = QLatin1String("ksvn");
-    } else {
-        proto = QLatin1String("ksvn+") + _proto;
-    }
-    return proto;
-}
-
-KUrl string2Uri(const QString &what)
-{
-    KUrl uri(what);
-    if (uri.protocol() == QLatin1String("file")) {
-        if (what.startsWith(QLatin1String("file:"))) {
-            uri.setProtocol(QLatin1String("ksvn+file"));
-        } else {
-            uri.setProtocol(QString());
-        }
-    } else {
-        uri.setProtocol(makeKdeUrl(uri.protocol()));
-    }
+    qCDebug(KDESVN_LOG) << "string2Uri(" << what << ") -> " << uri.toString() << ", local: " << uri.isLocalFile();
     return uri;
 }
 

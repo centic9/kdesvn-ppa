@@ -18,9 +18,9 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.         *
  ***************************************************************************/
 #include "commitmodelhelper.h"
-#include "src/svnqt/commititem.h"
+#include "svnqt/commititem.h"
 
-#include <klocale.h>
+#include <KLocalizedString>
 
 CommitActionEntry::CommitActionEntry(const QString &name, const QString &actiondesc, ACTION_TYPE kind)
     : _name(name), _actionDesc(actiondesc), _kind(kind)
