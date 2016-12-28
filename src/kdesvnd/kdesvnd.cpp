@@ -21,50 +21,47 @@
 #include "kdesvnd.h"
 #include "kdesvn-config.h"
 #include "kdesvnd_listener.h"
-#include "src/ksvnwidgets/authdialogimpl.h"
-#include "src/ksvnwidgets/ssltrustprompt_impl.h"
-#include "src/ksvnwidgets/commitmsg_impl.h"
-#include "src/ksvnwidgets/pwstorage.h"
+#include "ksvnwidgets/authdialogimpl.h"
+#include "ksvnwidgets/ssltrustprompt.h"
+#include "ksvnwidgets/commitmsg_impl.h"
+#include "ksvnwidgets/pwstorage.h"
+#include "helpers/kdesvn_debug.h"
 
-#include "src/settings/kdesvnsettings.h"
-#include "src/svnqt/client.h"
-#include "src/svnqt/revision.h"
-#include "src/svnqt/status.h"
-#include "src/svnqt/url.h"
-#include "src/svnqt/svnqttypes.h"
-#include "src/svnqt/client_parameter.h"
+#include "settings/kdesvnsettings.h"
+#include "svnqt/client.h"
+#include "svnqt/revision.h"
+#include "svnqt/status.h"
+#include "svnqt/url.h"
+#include "svnqt/svnqttypes.h"
+#include "svnqt/client_parameter.h"
 #include "helpers/ktranslateurl.h"
-#include "src/helpers/stringhelper.h"
+#include "helpers/stringhelper.h"
 #include "kdesvndadaptor.h"
 #include "ksvnjobview.h"
 
-#include <kdebug.h>
-#include <klocale.h>
-#include <kglobal.h>
-#include <kfiledialog.h>
-#include <kpassworddialog.h>
-#include <kaboutdata.h>
+#include <KIO/Global>
+#include <KLocalizedString>
+#include <KNotification>
+#include <KPasswordDialog>
+#include <KPluginFactory>
 
-#include <kpluginfactory.h>
-#include <knotification.h>
-
+#include <QFileDialog>
 #include <QVariant>
-#include <QList>
 #include <QDBusConnection>
+#include <QApplication>
 
-K_PLUGIN_FACTORY(KdeSvndFactory,
-                 registerPlugin<kdesvnd>();
-                )
-K_EXPORT_PLUGIN(KdeSvndFactory("kio_kdesvn"))
+K_PLUGIN_FACTORY_WITH_JSON(KdeSvndFactory,
+                           "kdesvnd.json",
+                           registerPlugin<kdesvnd>();
+                          )
 
 #define CHECK_KIO     if (!progressJobView.contains(kioid)) { \
         return;\
     }
 
-kdesvnd::kdesvnd(QObject *parent, const QList<QVariant> &) : KDEDModule(parent), m_componentData("kdesvn"),
+kdesvnd::kdesvnd(QObject *parent, const QList<QVariant> &) : KDEDModule(parent),
     m_uiserver("org.kde.JobViewServer", "/JobViewServer", QDBusConnection::sessionBus())
 {
-    KGlobal::locale()->insertCatalog("kdesvn");
     m_Listener = new KdesvndListener(this);
     new KdesvndAdaptor(this);
 }
@@ -74,32 +71,45 @@ kdesvnd::~kdesvnd()
     delete m_Listener;
 }
 
-QStringList kdesvnd::getTopLevelActionMenu(const KUrl::List &list)
+QStringList kdesvnd::getTopLevelActionMenu(const QStringList &urlList) const
 {
-    return getActionMenu(list, true);
+    // we get correct urls here
+    QList<QUrl> urls;
+    urls.reserve(urlList.size());
+    Q_FOREACH(const QString &str, urlList) {
+        urls += QUrl(str);
+    }
+
+    return getActionMenu(urls, true);
 }
 
-QStringList kdesvnd::getActionMenu(const KUrl::List &list)
+QStringList kdesvnd::getActionMenu(const QStringList &urlList) const
 {
-    return getActionMenu(list, false);
+    // we get correct urls here
+    QList<QUrl> urls;
+    urls.reserve(urlList.size());
+    Q_FOREACH(const QString &str, urlList) {
+        urls += QUrl(str);
+    }
+    return getActionMenu(urls, false);
 }
 
-QStringList kdesvnd::getActionMenu(const KUrl::List &list, bool toplevel)
+QStringList kdesvnd::getActionMenu(const QList<QUrl> &list, bool toplevel) const
 {
     QStringList result;
-    Kdesvnsettings::self()->readConfig();
-    if (Kdesvnsettings::no_konqueror_contextmenu() || list.count() == 0 ||
+    Kdesvnsettings::self()->load();
+    if (Kdesvnsettings::no_konqueror_contextmenu() || list.isEmpty() ||
+            !list.at(0).isLocalFile() ||
             (toplevel && Kdesvnsettings::no_konqueror_toplevelmenu())) {
         return result;
     }
-    QString base;
 
-    bool itemIsWc = isWorkingCopy(list[0], base);
+    const bool itemIsWc = isWorkingCopy(list[0]);
+
+    const QUrl _dir(list.at(0).adjusted(QUrl::RemoveFilename).adjusted(QUrl::StripTrailingSlash));
+    const bool parentIsWc = isWorkingCopy(_dir);
+
     bool itemIsRepository = false;
-
-    QString _par = list[0].directory(KUrl::IgnoreTrailingSlash);
-    bool parentIsWc = isWorkingCopy(_par, base);
-
     if (!parentIsWc && !itemIsWc) {
         itemIsRepository = isRepository(list[0]);
     }
@@ -122,7 +132,8 @@ QStringList kdesvnd::getActionMenu(const KUrl::List &list, bool toplevel)
             result << "Log";
             if (!toplevel) {
                 result << "Info";
-                if (isRepository(list[0].upUrl())) {
+                const QUrl upUrl = KIO::upUrl(list.at(0));
+                if (isRepository(upUrl)) {
                     result << "Blame"
                            << "Rename";
                 }
@@ -142,8 +153,7 @@ QStringList kdesvnd::getActionMenu(const KUrl::List &list, bool toplevel)
                << "Rename"
                << "Revert";
 
-        KUrl url = helpers::KTranslateUrl::translateSystemUrl(list[0]);
-
+        const QUrl url = list.at(0);
         QFileInfo f(url.path());
         if (f.isFile()) {
             result << "Blame";
@@ -157,10 +167,11 @@ QStringList kdesvnd::getActionMenu(const KUrl::List &list, bool toplevel)
     return result;
 }
 
-QStringList kdesvnd::getSingleActionMenu(const QString &what)
+QStringList kdesvnd::getSingleActionMenu(const QString &what) const
 {
-    KUrl::List l; l.append(KUrl(what));
-    return getActionMenu(l);
+    QList<QUrl> l;
+    l.append(QUrl(what));
+    return getActionMenu(l, false);
 }
 
 QStringList kdesvnd::get_saved_login(const QString &realm, const QString &user)
@@ -196,7 +207,7 @@ QStringList kdesvnd::get_login(const QString &realm, const QString &user)
 int kdesvnd::get_sslaccept(const QString &hostname, const QString &fingerprint, const QString &validFrom, const QString &validUntil, const QString &issuerDName, const QString &realm)
 {
     bool ok, saveit;
-    if (!SslTrustPrompt_impl::sslTrust(
+    if (!SslTrustPrompt::sslTrust(
                 hostname,
                 fingerprint,
                 validFrom,
@@ -227,7 +238,7 @@ QStringList kdesvnd::get_sslclientcertpw(const QString &realm)
     QStringList resList;
     QPointer<KPasswordDialog> dlg(new KPasswordDialog(0, KPasswordDialog::DomainReadOnly | KPasswordDialog::ShowKeepPassword));
     dlg->setDomain(realm);
-    dlg->setCaption(i18n("Enter password for realm %1", realm));
+    dlg->setWindowTitle(i18n("Enter password for realm %1", realm));
     dlg->setKeepPassword(true);
     if (dlg->exec() == KPasswordDialog::Accepted) {
         resList.append(dlg->password());
@@ -241,58 +252,48 @@ QStringList kdesvnd::get_sslclientcertpw(const QString &realm)
     return resList;
 }
 
-QString kdesvnd::get_sslclientcertfile()
+QString kdesvnd::get_sslclientcertfile() const
 {
-    QString afile = KFileDialog::getOpenFileName(KUrl(),
-                    QString(),
-                    0,
-                    i18n("Open a file with a #PKCS12 certificate"));
-    return afile;
+    return QFileDialog::getOpenFileName(nullptr, i18n("Open a file with a #PKCS12 certificate"));
 }
 
-QStringList kdesvnd::get_logmsg()
+QStringList kdesvnd::get_logmsg() const
 {
     QStringList res;
     bool ok;
     QString logMessage = Commitmsg_impl::getLogmessage(&ok, 0, 0, 0);
-    if (!ok) {
-        return res;
+    if (ok) {
+        res.append(logMessage);
     }
-    res.append(logMessage);
     return res;
 }
 
-QString kdesvnd::cleanUrl(const KUrl &url)
+QString kdesvnd::cleanUrl(const QUrl &url)
 {
-    QString cleanpath = url.path(KUrl::RemoveTrailingSlash);
-    return cleanpath;
+    return url.adjusted(QUrl::StripTrailingSlash).path();
 }
 
 /* just simple name check of course - no network access! */
-bool kdesvnd::isRepository(const KUrl &url)
+bool kdesvnd::isRepository(const QUrl &url) const
 {
-    QString proto = svn::Url::transformProtokoll(url.protocol());
+    QString proto = svn::Url::transformProtokoll(url.scheme());
     if (proto == QLatin1String("file")) {
         // local access - may a repository
         svn::StatusParameter params(svn::Path(QLatin1String("file://") + cleanUrl(url)));
         try {
             m_Listener->m_Svnclient->status(params.depth(svn::DepthEmpty).all(false).update(false).noIgnore(false).revision(svn::Revision::HEAD));
         } catch (const svn::ClientException &e) {
-            kDebug(9510) << e.msg() << endl;
+            qCDebug(KDESVN_LOG) << e.msg() << endl;
             return false;
         }
         return true;
-    } else {
-        return svn::Url::isValid(proto);
     }
+    return svn::Url::isValid(proto);
 }
 
-bool kdesvnd::isWorkingCopy(const KUrl &_url, QString &base)
+bool kdesvnd::isWorkingCopy(const QUrl &url) const
 {
-    base.clear();
-    KUrl url = helpers::KTranslateUrl::translateSystemUrl(_url);
-
-    if (url.isEmpty() || !url.isLocalFile() || url.protocol() != "file") {
+    if (url.isEmpty() || !url.isLocalFile() || url.scheme() != QLatin1String("file")) {
         return false;
     }
     svn::Revision peg(svn_opt_revision_unspecified);
@@ -303,7 +304,6 @@ bool kdesvnd::isWorkingCopy(const KUrl &_url, QString &base)
     } catch (const svn::ClientException &e) {
         return false;
     }
-    base = e[0].url();
     return true;
 }
 
@@ -327,21 +327,17 @@ void kdesvnd::registerKioFeedback(qulonglong kioid)
     if (progressJobView.contains(kioid)) {
         return;
     }
-    QString programIconName = m_componentData.aboutData()->programIconName();
-    if (programIconName.isEmpty()) {
-        programIconName = m_componentData.aboutData()->appName();
-    }
-    QDBusReply<QDBusObjectPath> reply = m_uiserver.requestView(m_componentData.aboutData()->programName(),
-                                        programIconName,
-                                        0x0003);
+    QDBusReply<QDBusObjectPath> reply = m_uiserver.requestView(qApp->applicationName(),
+                                                               qApp->applicationName(),
+                                                               0x0003);
     if (reply.isValid()) {
         KsvnJobView *jobView = new KsvnJobView(kioid, "org.kde.JobViewServer",
                                                reply.value().path(),
                                                QDBusConnection::sessionBus());
         progressJobView.insert(kioid, jobView);
-        kDebug() << "Register " << kioid << endl;
+        qCDebug(KDESVN_LOG) << "Register " << kioid << endl;
     } else {
-        kDebug() << "Could not register " << kioid << endl;
+        qCDebug(KDESVN_LOG) << "Could not register " << kioid << endl;
     }
 }
 
@@ -370,15 +366,15 @@ void kdesvnd::unRegisterKioFeedback(qulonglong kioid)
     CHECK_KIO;
     KsvnJobView *jobView = progressJobView.take(kioid);
     delete jobView;
-    kDebug() << "Removed " << kioid << endl;
+    qCDebug(KDESVN_LOG) << "Removed " << kioid << endl;
 }
 
 void kdesvnd::notifyKioOperation(const QString &text)
 {
     KNotification::event(
-        "kdesvn-kio", text,
+        QLatin1String("kdesvn-kio"), text,
         QPixmap(), 0L, KNotification::CloseOnTimeout,
-        m_componentData);
+        QLatin1String("kdesvn"));
 }
 
 void kdesvnd::errorKioOperation(const QString &text)
@@ -407,3 +403,5 @@ void kdesvnd::setKioStatus(qulonglong kioid, int status, const QString &message)
         break;
     }
 }
+
+#include "kdesvnd.moc"

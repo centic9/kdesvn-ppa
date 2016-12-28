@@ -20,9 +20,9 @@
 #ifndef KSVN_JOBVIEW_H
 #define KSVN_JOBVIEW_H
 
-#include "src/ksvnwidgets/jobviewinterface.h"
+#include "ksvnwidgets/jobviewinterface.h"
 
-class KsvnJobView: public org::kde::JobView
+class KsvnJobView: public org::kde::JobViewV2
 {
     Q_OBJECT
 
@@ -49,7 +49,7 @@ public:
         return m_id;
     }
 
-    unsigned long percent(qulonglong amount);
+    unsigned long percent(qulonglong amount) const;
 
     virtual void setTotal(qlonglong max);
     qlonglong max()const

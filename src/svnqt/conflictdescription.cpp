@@ -25,7 +25,7 @@
 #include "svnqt_defines.h"
 
 #include <svn_wc.h>
-#include <svn_version.h>
+#include "helper.h"
 
 namespace svn
 {
@@ -34,11 +34,87 @@ ConflictDescription::~ConflictDescription()
 {
 }
 
+ConflictDescription::ConflictDescription(const svn_wc_conflict_description2_t *conflict)
+{
+    init();
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,7,0)
+    if (!conflict) {
+        return;
+    }
+    m_baseFile = QString::fromUtf8(conflict->base_abspath);
+    m_mergedFile = QString::fromUtf8(conflict->merged_file);
+    m_mimeType = QString::fromUtf8(conflict->mime_type);
+    m_myFile = QString::fromUtf8(conflict->my_abspath);
+    m_Path = QString::fromUtf8(conflict->local_abspath);
+    m_propertyName = QString::fromUtf8(conflict->property_name);
+    m_theirFile = QString::fromUtf8(conflict->their_abspath);
+    switch (conflict->action) {
+    case svn_wc_conflict_action_edit:
+        m_action = ConflictAction::Edit;
+        break;
+    case svn_wc_conflict_action_add:
+        m_action = ConflictAction::Add;
+        break;
+    case svn_wc_conflict_action_delete:
+        m_action = ConflictAction::Delete;
+        break;
+    case svn_wc_conflict_action_replace:
+        m_action = ConflictAction::Replace;
+        break;
+    }
+    switch (conflict->kind) {
+    case svn_wc_conflict_kind_text:
+        m_Type = ConflictType::Text;
+        break;
+    case svn_wc_conflict_kind_property:
+        m_Type = ConflictType::Property;
+        break;
+    case svn_wc_conflict_kind_tree:
+        m_Type = ConflictType::Tree;
+        break;
+    }
+    m_nodeKind = conflict->node_kind;
+    m_binary = conflict->is_binary;
+    switch (conflict->reason) {
+    case svn_wc_conflict_reason_edited:
+        m_reason = ConflictReason::Edited;
+        break;
+    case svn_wc_conflict_reason_obstructed:
+        m_reason = ConflictReason::Obstructed;
+        break;
+    case svn_wc_conflict_reason_deleted:
+        m_reason = ConflictReason::Deleted;
+        break;
+    case svn_wc_conflict_reason_missing:
+        m_reason = ConflictReason::Missing;
+        break;
+    case svn_wc_conflict_reason_unversioned:
+        m_reason = ConflictReason::Unversioned;
+        break;
+    case svn_wc_conflict_reason_added:
+        m_reason = ConflictReason::Added;
+        break;
+    case svn_wc_conflict_reason_replaced:
+        m_reason = ConflictReason::Replaced;
+        break;
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,8,0)
+    case svn_wc_conflict_reason_moved_away:
+        m_reason = ConflictReason::MovedAway;
+        break;
+    case svn_wc_conflict_reason_moved_here:
+        m_reason = ConflictReason::MovedHere;
+        break;
+#endif
+    }
+#else
+    Q_UNUSED(conflict);
+#endif
+}
+
 ConflictDescription::ConflictDescription(const svn_wc_conflict_description_t *conflict)
     : m_pool()
 {
     init();
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 5)) || (SVN_VER_MAJOR > 1)
     if (!conflict) {
         return;
     }
@@ -51,25 +127,30 @@ ConflictDescription::ConflictDescription(const svn_wc_conflict_description_t *co
     m_theirFile = QString::fromUtf8(conflict->their_file);
     switch (conflict->action) {
     case svn_wc_conflict_action_edit:
-        m_action = ConflictEdit;
+        m_action = ConflictAction::Edit;
         break;
     case svn_wc_conflict_action_add:
-        m_action = ConflictAdd;
+        m_action = ConflictAction::Add;
         break;
     case svn_wc_conflict_action_delete:
-        m_action = ConflictDelete;
+        m_action = ConflictAction::Delete;
         break;
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,7,0)
+    case svn_wc_conflict_action_replace:
+        m_action = ConflictAction::Replace;
+        break;
+#endif
     }
     switch (conflict->kind) {
     case svn_wc_conflict_kind_text:
-        m_Type = ConflictText;
+        m_Type = ConflictType::Text;
         break;
     case svn_wc_conflict_kind_property:
-        m_Type = ConflictProperty;
+        m_Type = ConflictType::Property;
         break;
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 6)) || (SVN_VER_MAJOR > 1)
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,6,0)
     case svn_wc_conflict_kind_tree:
-        m_Type = ConflictTree;
+        m_Type = ConflictType::Tree;
         break;
 #endif
     }
@@ -77,29 +158,39 @@ ConflictDescription::ConflictDescription(const svn_wc_conflict_description_t *co
     m_binary = conflict->is_binary;
     switch (conflict->reason) {
     case svn_wc_conflict_reason_edited:
-        m_reason = ReasonEdited;
+        m_reason = ConflictReason::Edited;
         break;
     case svn_wc_conflict_reason_obstructed:
-        m_reason = ReasonObstructed;
+        m_reason = ConflictReason::Obstructed;
         break;
     case svn_wc_conflict_reason_deleted:
-        m_reason = ReasonDeleted;
+        m_reason = ConflictReason::Deleted;
         break;
     case svn_wc_conflict_reason_missing:
-        m_reason = ReasonMissing;
+        m_reason = ConflictReason::Missing;
         break;
     case svn_wc_conflict_reason_unversioned:
-        m_reason = ReasonUnversioned;
+        m_reason = ConflictReason::Unversioned;
         break;
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 6)) || (SVN_VER_MAJOR > 1)
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,6,0)
     case svn_wc_conflict_reason_added:
-        m_reason = ReasonAdded;
+        m_reason = ConflictReason::Added;
+        break;
+#endif
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,7,0)
+    case svn_wc_conflict_reason_replaced:
+        m_reason = ConflictReason::Replaced;
+        break;
+#endif
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,8,0)
+    case svn_wc_conflict_reason_moved_away:
+        m_reason = ConflictReason::MovedAway;
+        break;
+    case svn_wc_conflict_reason_moved_here:
+        m_reason = ConflictReason::MovedHere;
         break;
 #endif
     }
-#else
-    Q_UNUSED(conflict);
-#endif
 }
 
 }
@@ -114,62 +205,73 @@ const QString &svn::ConflictDescription::baseFile() const
     return m_baseFile;
 }
 
+
 /*!
     \fn svn::ConflictDescription::init()
  */
 void svn::ConflictDescription::init()
 {
-    m_action = ConflictEdit;
-    m_Type = ConflictText;
-    m_reason = ReasonEdited;
+    m_action = ConflictAction::Edit;
+    m_Type = ConflictType::Text;
+    m_reason = ConflictReason::Edited;
     m_binary = false;
     m_nodeKind = svn_node_unknown;
 }
+
 
 bool svn::ConflictDescription::binary() const
 {
     return m_binary;
 }
 
+
 const QString &svn::ConflictDescription::mergedFile() const
 {
     return m_mergedFile;
 }
+
 
 const QString &svn::ConflictDescription::mimeType() const
 {
     return m_mimeType;
 }
 
+
 const QString &svn::ConflictDescription::myFile() const
 {
     return m_myFile;
 }
+
 
 svn_node_kind_t svn::ConflictDescription::nodeKind() const
 {
     return m_nodeKind;
 }
 
+
 const QString &svn::ConflictDescription::Path() const
 {
     return m_Path;
 }
+
 
 const QString &svn::ConflictDescription::propertyName() const
 {
     return m_propertyName;
 }
 
+
 svn::ConflictDescription::ConflictReason svn::ConflictDescription::reason() const
 {
     return m_reason;
 }
 
+
 const QString &svn::ConflictDescription::theirFile() const
 {
     return m_theirFile;
 }
+
 
 svn::ConflictDescription::ConflictType svn::ConflictDescription::Type() const
 {

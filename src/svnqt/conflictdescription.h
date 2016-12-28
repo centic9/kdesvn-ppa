@@ -25,12 +25,15 @@
 #define SVNCONFLICTDESCRIPTION_H
 
 struct svn_wc_conflict_description_t;
+struct svn_wc_conflict_description2_t;
 
 #include <svnqt/pool.h>
 #include <svnqt/svnqt_defines.h>
 #include <svn_types.h>
 
 #include <QString>
+#include <QSharedPointer>
+#include <QVector>
 
 namespace svn
 {
@@ -43,25 +46,30 @@ namespace svn
 class SVNQT_EXPORT ConflictDescription
 {
 public:
-    enum ConflictType {
-        ConflictText,
-        ConflictProperty,
-        ConflictTree
+    enum class ConflictType {
+        Text,
+        Property,
+        Tree
     };
-    enum ConflictReason {
-        ReasonEdited,
-        ReasonObstructed,
-        ReasonDeleted,
-        ReasonMissing,
-        ReasonUnversioned,
-        ReasonAdded
+    enum class ConflictReason {
+        Edited,
+        Obstructed,
+        Deleted,
+        Missing,
+        Unversioned,
+        Added,
+        Replaced,
+        MovedAway,
+        MovedHere
     };
-    enum ConflictAction {
-        ConflictEdit,
-        ConflictAdd,
-        ConflictDelete
+    enum class ConflictAction {
+        Edit,
+        Add,
+        Delete,
+        Replace
     };
-    explicit ConflictDescription(const svn_wc_conflict_description_t * = NULL);
+    explicit ConflictDescription(const svn_wc_conflict_description_t *);
+    explicit ConflictDescription(const svn_wc_conflict_description2_t *);
     ~ConflictDescription();
 
     ConflictAction action() const;
@@ -77,9 +85,10 @@ public:
     const QString &mimeType() const;
     const QString &mergedFile() const;
 
-protected:
     //! don't use it.
-    ConflictDescription(const ConflictDescription &);
+    ConflictDescription(const ConflictDescription &) = delete;
+    ConflictDescription &operator=(const ConflictDescription &) = delete;
+protected:
     void init();
 protected:
     Pool m_pool;
@@ -96,6 +105,9 @@ protected:
     QString m_theirFile;
     svn_node_kind_t m_nodeKind;
 };
+
+typedef QSharedPointer<ConflictDescription> ConflictDescriptionP;
+typedef QVector<ConflictDescriptionP> ConflictDescriptionList;
 
 }
 

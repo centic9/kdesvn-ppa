@@ -63,6 +63,7 @@ Client_impl::setContext(const ContextP &context)
     m_context = context;
 }
 
+
 void
 Client_impl::url2Revision(const QString &revstring,
                           Revision &start, Revision &end)
@@ -78,11 +79,11 @@ Client_impl::url2Revision(const QString &revstring,
 
 void Client_impl::url2Revision(const QString &revstring, Revision &start)
 {
-    if (revstring == "WORKING") {
+    if (revstring == QLatin1String("WORKING")) {
         start = Revision::WORKING;
-    } else if (revstring == "BASE") {
+    } else if (revstring == QLatin1String("BASE")) {
         start = Revision::BASE;
-    } else if (revstring == "START") {
+    } else if (revstring == QLatin1String("START")) {
         start = Revision::START;
     } else {
         Revision end;
@@ -97,11 +98,11 @@ apr_hash_t *Client_impl::map2hash(const PropertiesMap &aMap, const Pool &pool)
 
 bool Client_impl::RepoHasCapability(const Path &repository, Capability capability)
 {
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 5)) || (SVN_VER_MAJOR > 1)
     svn_error_t *error = 0;
     Pool pool;
 
     svn_ra_session_t *session = 0;
+    // todo svn 1.8: svn_client_open_ra_session2
     error = svn_client_open_ra_session(&session,
                                        repository.cstr(),
                                        *m_context,
@@ -135,12 +136,6 @@ bool Client_impl::RepoHasCapability(const Path &repository, Capability capabilit
         throw ClientException(error);
     }
     return has;
-#else
-    Q_UNUSED(repository);
-    Q_UNUSED(capability);
-    return false;
-#endif
-
 }
 }
 

@@ -21,30 +21,18 @@
 #include "kdesvn_part.h"
 #include "svnfrontend/commandexec.h"
 
-#include <kstandarddirs.h>
 
 commandline_part::commandline_part(QObject *parent, const QVariantList &)
     : QObject(parent)
-{
-    KGlobal::locale()->insertCatalog("kdesvn");
-
-    ///@fixme replace with kde4
-    //KInstance * inst = kdesvnPartFactory::instance();
-
-    /*
-    KGlobal::locale()->insertCatalog(inst->instanceName());
-    KGlobal::dirs()->addResourceType( inst->instanceName() + "data",
-        KStandardDirs::kde_default("data")+ QString::fromLatin1( inst->instanceName() ) + '/' );
-    */
-
-    m_pCPart = new CommandExec(this);
-}
+    , m_pCPart(new CommandExec(this))
+{}
 
 commandline_part::~commandline_part()
 {
+    delete m_pCPart;
 }
 
-int commandline_part::exec(KCmdLineArgs *args)
+int commandline_part::exec(const QCommandLineParser *parser)
 {
-    return m_pCPart->exec(args);
+    return m_pCPart->exec(parser);
 }

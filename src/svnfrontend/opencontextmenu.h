@@ -17,35 +17,31 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.         *
  ***************************************************************************/
-#ifndef OPENCONTEXTMENU_H
-#define OPENCONTEXTMENU_H
+#pragma once
 
-#include <kservice.h>
-#include <kaction.h>
-#include <kurl.h>
-#include <kmenu.h>
+#include <KService>
 
-#include <QMap>
+#include <QMenu>
+#include <QUrl>
+#include <QVector>
 
 /**
     @author Rajko Albrecht <ral@alwins-world.de>
 */
-class OpenContextmenu : public KMenu
+class OpenContextmenu : public QMenu
 {
     Q_OBJECT
 public:
-    OpenContextmenu(const KUrl &aPath, const KService::List &aList, QWidget *parent);
+    OpenContextmenu(const QUrl &aPath, const KService::List &aList, QWidget *parent);
     virtual ~OpenContextmenu();
 protected:
-    KUrl m_Path;
+    QUrl m_Path;
     KService::List m_List;
-    QMap<int, KService::Ptr> m_mapPopup;
+    QVector<KService::Ptr> m_mapPopup;
 
     void setup();
 
-protected slots:
-    virtual void slotOpenWith();
-    virtual void slotRunService(QAction *);
+protected Q_SLOTS:
+    void slotOpenWith();
+    void slotRunService(QAction *);
 };
-
-#endif

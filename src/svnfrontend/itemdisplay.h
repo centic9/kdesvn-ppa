@@ -21,10 +21,9 @@
 #ifndef ITEMDISPLAY_H
 #define ITEMDISPLAY_H
 
-#include "src/svnqt/svnqttypes.h"
+#include "svnqt/svnqttypes.h"
 #include "frontendtypes.h"
 #include <QString>
-#include <kurl.h>
 
 class QWidget;
 
@@ -42,15 +41,16 @@ public:
     virtual SvnItem *Selected()const = 0;
     virtual SvnItemList SelectionList()const = 0;
     virtual svn::Revision baseRevision()const = 0;
-    virtual bool openUrl(const KUrl &url, bool noReinit = false) = 0;
+    virtual bool openUrl(const QUrl &url, bool noReinit = false) = 0;
     virtual SvnItem *SelectedOrMain()const = 0;
 
     bool isWorkingCopy()const;
-    QString baseUri()const;
+    QString baseUri()const; // a local path when it's a wc, an url when it's a repo
+    QUrl baseUriAsUrl()const;
     bool isNetworked()const;
     QString lastError()const;
     static bool filterOut(const SvnItem *item);
-    QString relativePath(const SvnItem *item);
+    QString relativePath(const SvnItem *item) const;
 
 protected:
     void setWorkingCopy(bool);

@@ -20,14 +20,11 @@
 #ifndef SVNTREEVIEW_H
 #define SVNTREEVIEW_H
 
-#include <KUrl>
 #include <QTreeView>
 
 class SvnTreeView: public QTreeView
 {
     Q_OBJECT
-private:
-    static bool _isDrag;
 public:
     explicit SvnTreeView(QWidget *parent = 0);
     virtual ~SvnTreeView();
@@ -37,7 +34,7 @@ protected:
     virtual void dropEvent(QDropEvent *event);
 
 protected Q_SLOTS:
-    virtual void doDrop(const KUrl::List &, const QModelIndex &, bool, Qt::DropAction, Qt::KeyboardModifiers);
+    void doDrop(const QList<QUrl> &, const QModelIndex &, bool, Qt::DropAction, Qt::KeyboardModifiers);
 };
 
 #endif

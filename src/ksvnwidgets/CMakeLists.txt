@@ -1,4 +1,4 @@
-####
+ ####
  #   Copyright (C) 2005-2009 by Rajko Albrecht  ral@alwins-world.de        #
  #   http://kdesvn.alwins-world.de/                                        #
  #                                                                         #
@@ -18,13 +18,11 @@
  #   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.         #
  ####
 
-include_directories(${CMAKE_BINARY_DIR}/src/svnqt)
-
-kde4_add_ui_files(kdesvn_shared_ui
+ki18n_wrap_ui(kdesvn_shared_ui
     authdlg.ui
     commitmessage.ui
     deleteform.ui
-    depthform.ui
+    depthselector.ui
     encodingselector.ui
     revertform.ui
     ssltrustprompt.ui
@@ -34,40 +32,52 @@ set(ksvnwidgetsrc
     authdialogimpl.cpp
     authdialogwidget.cpp
     commitmsg_impl.cpp
-    deleteform_impl.cpp
+    deleteform.cpp
     depthselector.cpp
     diffbrowser.cpp
-    diffbrowserdata.cpp
     diffsyntax.cpp
     encodingselector_impl.cpp
+    ksvndialog.cpp
     models/commitmodel.cpp
     models/commitmodelhelper.cpp
     pwstorage.cpp
-    revertform_impl.cpp
-    ssltrustprompt_impl.cpp
+    revertform.cpp
+    ssltrustprompt.cpp
     )
 
 set(ksvnwidgethdr
     authdialogimpl.h
     authdialogwidget.h
     commitmsg_impl.h
-    deleteform_impl.h
+    deleteform.h
     depthselector.h
     diffbrowser.h
-    diffbrowserdata.h
     diffsyntax.h
     encodingselector_impl.h
+    ksvndialog.h
     models/commitmodel.h
     models/commitmodelhelper.h
     pwstorage.h
-    revertform_impl.h
-    ssltrustprompt_impl.h
+    revertform.h
+    ssltrustprompt.h
 )
 
-qt4_add_dbus_interfaces(ksvnwidgetsrc ${KDE4_DBUS_INTERFACES_DIR}/org.kde.JobViewServer.xml)
-qt4_add_dbus_interfaces(ksvnwidgetsrc ${KDE4_DBUS_INTERFACES_DIR}/org.kde.JobView.xml)
+qt5_add_dbus_interfaces(ksvnwidgetsrc ${KJOBWIDGETS_DBUS_INTERFACES_DIR}/kf5_org.kde.JobViewServer.xml)
+qt5_add_dbus_interfaces(ksvnwidgetsrc ${KJOBWIDGETS_DBUS_INTERFACES_DIR}/kf5_org.kde.JobView.xml)
 
 add_library(ksvnwidgets STATIC ${kdesvn_shared_ui} ${ksvnwidgetsrc} ${ksvnwidgethdr})
+target_include_directories(ksvnwidgets
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/../
+        ${CMAKE_CURRENT_BINARY_DIR}/../
+)
 target_link_libraries(ksvnwidgets
-    kdesvncfgreader
+    PRIVATE
+        kdesvnhelpers
+        kdesvncfgreader
+        KF5::Wallet
+    PUBLIC
+        svnqt
+        Qt5::Widgets
+        KF5::TextEditor
 )

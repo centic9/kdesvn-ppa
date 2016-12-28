@@ -30,40 +30,35 @@
 #include "mergedlg_impl.h"
 #include "checkoutinfo_impl.h"
 #include "importdir_logmsg.h"
-#include "src/settings/kdesvnsettings.h"
+#include "settings/kdesvnsettings.h"
 #include "helpers/sshagent.h"
-#include "src/svnqt/url.h"
-#include "src/svnqt/svnqttypes.h"
-#include "fronthelpers/createdlg.h"
+#include "svnqt/targets.h"
+#include "svnqt/url.h"
 #include "fronthelpers/rangeinput_impl.h"
 #include "fronthelpers/widgetblockstack.h"
 #include "fronthelpers/fronthelpers.h"
-#include "fronthelpers/DialogStack.h"
-#include "src/ksvnwidgets/commitmsg_impl.h"
-#include "src/ksvnwidgets/deleteform_impl.h"
-#include "src/helpers/sub2qt.h"
+#include "ksvnwidgets/commitmsg_impl.h"
+#include "ksvnwidgets/deleteform.h"
+#include "helpers/kdesvn_debug.h"
 #include "opencontextmenu.h"
 #include "EditIgnorePattern.h"
-#include "setpropertywidget.h"
 
+#include <kjobwidgets.h>
+#include <kjobuidelegate.h>
 #include <kmessagebox.h>
-#include <kicon.h>
-#include <kshortcut.h>
-#include <kaction.h>
 #include <kactioncollection.h>
 #include <kauthorized.h>
-#include <ktrader.h>
-#include <kmenu.h>
+#include <kmimetypetrader.h>
 #include <kio/deletejob.h>
 #include <kio/copyjob.h>
-#include <kfiledialog.h>
-#include <knotification.h>
 #include <unistd.h>
 
-#include <QKeyEvent>
-#include <QTimer>
-#include <QMap>
+#include <QApplication>
 #include <QCheckBox>
+#include <QKeyEvent>
+#include <QMap>
+#include <QUrlQuery>
+#include <QTimer>
 
 class MainTreeWidgetData
 {
@@ -113,7 +108,7 @@ public:
     svn::Revision m_remoteRevision;
     QString merge_Target, merge_Src2, merge_Src1;
 
-    QTimer m_TimeModified, m_TimeUpdates;
+    QTimer m_TimeModified, m_TimeUpdates, m_resizeColumnsTimer;
 };
 
 MainTreeWidget::MainTreeWidget(KActionCollection *aCollection, QWidget *parent, Qt::WindowFlags f)
@@ -156,15 +151,15 @@ MainTreeWidget::MainTreeWidget(KActionCollection *aCollection, QWidget *parent, 
     connect(m_Data->m_Model->svnWrapper(), SIGNAL(sigRefreshAll()), this, SLOT(refreshCurrentTree()));
     connect(m_Data->m_Model->svnWrapper(), SIGNAL(sigRefreshCurrent(SvnItem*)), this, SLOT(refreshCurrent(SvnItem*)));
     connect(m_Data->m_Model->svnWrapper(), SIGNAL(sigRefreshIcons()), this, SLOT(slotRescanIcons()));
-    connect(m_Data->m_Model->svnWrapper(), SIGNAL(sigGotourl(QString)), this, SLOT(_openUrl(QString)));
+    connect(m_Data->m_Model->svnWrapper(), SIGNAL(sigGotourl(QUrl)), this, SLOT(_openUrl(QUrl)));
     connect(m_Data->m_Model->svnWrapper(), SIGNAL(sigCacheStatus(qlonglong,qlonglong)), this, SIGNAL(sigCacheStatus(qlonglong,qlonglong)));
     connect(m_Data->m_Model->svnWrapper(), SIGNAL(sigThreadsChanged()), this, SLOT(enableActions()));
     connect(m_Data->m_Model->svnWrapper(), SIGNAL(sigCacheDataChanged()), this, SLOT(slotCacheDataChanged()));
 
     connect(m_Data->m_Model->svnWrapper(), SIGNAL(sigExtraStatusMessage(QString)), this, SIGNAL(sigExtraStatusMessage(QString)));
 
-    connect(m_Data->m_Model, SIGNAL(urlDropped(KUrl::List,Qt::DropAction,QModelIndex,bool)),
-            this, SLOT(slotUrlDropped(KUrl::List,Qt::DropAction,QModelIndex,bool)));
+    connect(m_Data->m_Model, SIGNAL(urlDropped(QList<QUrl>,Qt::DropAction,QModelIndex,bool)),
+            this, SLOT(slotUrlDropped(QList<QUrl>,Qt::DropAction,QModelIndex,bool)));
 
     connect(m_Data->m_Model, SIGNAL(itemsFetched(QModelIndex)), this, SLOT(slotItemsInserted(QModelIndex)));
 
@@ -178,6 +173,9 @@ MainTreeWidget::MainTreeWidget(KActionCollection *aCollection, QWidget *parent, 
     connect(&(m_Data->m_TimeModified), SIGNAL(timeout()), this, SLOT(slotCheckModified()));
     m_Data->m_TimeUpdates.setParent(this);
     connect(&(m_Data->m_TimeUpdates), SIGNAL(timeout()), this, SLOT(slotCheckUpdates()));
+    m_Data->m_resizeColumnsTimer.setSingleShot(true);
+    m_Data->m_resizeColumnsTimer.setParent(this);
+    connect(&(m_Data->m_resizeColumnsTimer), SIGNAL(timeout()), this, SLOT(resizeAllColumns()));
 }
 
 MainTreeWidget::~MainTreeWidget()
@@ -185,7 +183,7 @@ MainTreeWidget::~MainTreeWidget()
     delete m_Data;
 }
 
-void MainTreeWidget::_openUrl(const QString &url)
+void MainTreeWidget::_openUrl(const QUrl &url)
 {
     openUrl(url, true);
 }
@@ -200,7 +198,7 @@ void MainTreeWidget::resizeAllColumns()
     m_DirTreeView->resizeColumnToContents(SvnItemModel::Name);
 }
 
-bool MainTreeWidget::openUrl(const KUrl &url, bool noReinit)
+bool MainTreeWidget::openUrl(const QUrl &url, bool noReinit)
 {
 
 #ifdef DEBUG_TIMER
@@ -216,34 +214,30 @@ bool MainTreeWidget::openUrl(const KUrl &url, bool noReinit)
     if (!noReinit) {
         m_Data->m_Model->svnWrapper()->reInitClient();
     }
-    QString query = url.query();
 
-    KUrl _url = url;
-    QString proto = svn::Url::transformProtokoll(url.protocol());
-    _url.cleanPath();
-    _url.setProtocol(proto);
-    proto = _url.url(KUrl::RemoveTrailingSlash);
+    QUrl _url(url);
+    const QString proto = svn::Url::transformProtokoll(url.scheme());
+    _url = _url.adjusted(QUrl::NormalizePathSegments);
+    _url.setScheme(proto);
 
-    QStringList s = proto.split('?');
+    const QString baseUriString = _url.url(QUrl::StripTrailingSlash);
+    const QStringList s = baseUriString.split('?');
     if (s.size() > 1) {
         setBaseUri(s[0]);
     } else {
-        setBaseUri(proto);
+        setBaseUri(baseUriString);
     }
     setWorkingCopy(false);
     setNetworked(false);
     m_Data->m_remoteRevision = svn::Revision::HEAD;
 
-    QString _dummy;
-
-    if (!QString::compare("svn+file", url.protocol())) {
-        setBaseUri("file://" + url.path());
+    if (QLatin1String("svn+file") == url.scheme()) {
+        setBaseUri(url.path());
     } else {
         if (url.isLocalFile()) {
-            QString s = url.path(KUrl::RemoveTrailingSlash);
-            QFileInfo fi(s);
+            QFileInfo fi(url.path());
             if (fi.exists() && fi.isSymLink()) {
-                QString sl = fi.readLink();
+                const QString sl = fi.readLink();
                 if (sl.startsWith(QLatin1Char('/'))) {
                     setBaseUri(sl);
                 } else {
@@ -253,13 +247,18 @@ bool MainTreeWidget::openUrl(const KUrl &url, bool noReinit)
             } else {
                 setBaseUri(url.path());
             }
+            QUrl _dummy;
+            qCDebug(KDESVN_LOG) << "check if " << baseUri() << " is a local wc ...";
             if (m_Data->m_Model->svnWrapper()->isLocalWorkingCopy(baseUri(), _dummy)) {
                 setWorkingCopy(true);
+                // make sure a valid path is stored as baseuri
+                setBaseUri(url.toLocalFile());
+                qCDebug(KDESVN_LOG) << "... yes -> " << baseUri();
             } else {
-                // yes! KUrl sometimes makes a correct localfile url (file:///)
-                // to a simple file:/ - that breakes subversion lib. so we make sure
-                // that we have a correct url
-                setBaseUri("file://" + baseUri());
+                setWorkingCopy(false);
+                // make sure a valid url is stored as baseuri
+                setBaseUri(url.toString());
+                qCDebug(KDESVN_LOG) << "... no -> " << baseUri();
             }
         } else {
             setNetworked(true);
@@ -274,10 +273,11 @@ bool MainTreeWidget::openUrl(const KUrl &url, bool noReinit)
             }
         }
     }
-    if (query.length() > 1) {
-        QMap<QString, QString> q = url.queryItems();
-        if (q.find("rev") != q.end()) {
-            QString v = q["rev"];
+    const QList<QPair<QString, QString>> q = QUrlQuery(url).queryItems();
+    typedef QPair<QString, QString> queryPair;
+    Q_FOREACH(const queryPair &p, q) {
+        if (p.first == QLatin1String("rev")) {
+            const QString v = p.second;
             svn::Revision tmp;
             m_Data->m_Model->svnWrapper()->svnclient()->url2Revision(v, m_Data->m_remoteRevision, tmp);
             if (m_Data->m_remoteRevision == svn::Revision::UNDEFINED) {
@@ -285,8 +285,8 @@ bool MainTreeWidget::openUrl(const KUrl &url, bool noReinit)
             }
         }
     }
-    if (url.protocol() == "svn+ssh" ||
-            url.protocol() == "ksvn+ssh") {
+    if (url.scheme() == QLatin1String("svn+ssh") ||
+            url.scheme() == QLatin1String("ksvn+ssh")) {
         SshAgent ssh;
         ssh.addSshIdentities();
     }
@@ -321,21 +321,21 @@ bool MainTreeWidget::openUrl(const KUrl &url, bool noReinit)
         m_Data->m_Model->svnWrapper()->startFillCache(baseUri(), true);
     }
 #ifdef DEBUG_TIMER
-    kDebug() << "Starting cache " << _counttime.elapsed();
+    qCDebug(KDESVN_LOG) << "Starting cache " << _counttime.elapsed();
     _counttime.restart();
 #endif
     emit changeCaption(baseUri());
     emit sigUrlOpend(result);
-    emit sigUrlChanged(baseUri());
+    emit sigUrlChanged(baseUriAsUrl());
 #ifdef DEBUG_TIMER
-    kDebug() << "Fired signals " << _counttime.elapsed();
+    qCDebug(KDESVN_LOG) << "Fired signals " << _counttime.elapsed();
     _counttime.restart();
 #endif
 
     QTimer::singleShot(1, this, SLOT(readSupportData()));
     enableActions();
 #ifdef DEBUG_TIMER
-    kDebug() << "Enabled actions " << _counttime.elapsed();
+    qCDebug(KDESVN_LOG) << "Enabled actions " << _counttime.elapsed();
 #endif
     /*  KNotification * notification=new KNotification("kdesvn-open");
         notification->setText("Opened url");
@@ -388,7 +388,6 @@ SvnItemList MainTreeWidget::SelectionList()const
         }
         return ret;
     }
-    ret.reserve(_mi.size());
     for (int i = 0; i < _mi.count(); ++i) {
         ret.push_back(m_Data->sourceNode(_mi[i], false));
     }
@@ -408,13 +407,12 @@ SvnItemList MainTreeWidget::DirSelectionList()const
 
 QModelIndex MainTreeWidget::SelectedIndex()const
 {
-    QModelIndexList _mi = m_TreeView->selectionModel()->selectedRows(0);
+    const QModelIndexList _mi = m_TreeView->selectionModel()->selectedRows(0);
     if (_mi.count() != 1) {
-        if (_mi.count() == 0) {
-            QModelIndex ind = m_TreeView->rootIndex();
+        if (_mi.isEmpty()) {
+            const QModelIndex ind = m_TreeView->rootIndex();
             if (ind.isValid()) {
-                ind = m_Data->m_SortModel->mapToSource(ind);
-                return ind;
+                return m_Data->m_SortModel->mapToSource(ind);
             }
         }
         return QModelIndex();
@@ -424,7 +422,7 @@ QModelIndex MainTreeWidget::SelectedIndex()const
 
 QModelIndex MainTreeWidget::DirSelectedIndex()const
 {
-    QModelIndexList _mi = m_DirTreeView->selectionModel()->selectedRows(0);
+    const QModelIndexList _mi = m_DirTreeView->selectionModel()->selectedRows(0);
     if (_mi.count() != 1) {
         return QModelIndex();
     }
@@ -433,22 +431,22 @@ QModelIndex MainTreeWidget::DirSelectedIndex()const
 
 SvnItemModelNode *MainTreeWidget::SelectedNode()const
 {
-    QModelIndex index = SelectedIndex();
+    const QModelIndex index = SelectedIndex();
     if (index.isValid()) {
         SvnItemModelNode *item = static_cast<SvnItemModelNode *>(index.internalPointer());
         return item;
     }
-    return 0;
+    return nullptr;
 }
 
 SvnItemModelNode *MainTreeWidget::DirSelectedNode()const
 {
-    QModelIndex index = DirSelectedIndex();
+    const QModelIndex index = DirSelectedIndex();
     if (index.isValid()) {
         SvnItemModelNode *item = static_cast<SvnItemModelNode *>(index.internalPointer());
         return item;
     }
-    return 0;
+    return nullptr;
 }
 
 void MainTreeWidget::slotSelectionChanged(const QItemSelection &, const QItemSelection &)
@@ -490,181 +488,182 @@ void MainTreeWidget::setupActions()
     if (!m_Data->m_Collection) {
         return;
     }
-    KAction *tmp_action;
+    QAction *tmp_action;
     /* local and remote actions */
     /* 1. actions on dirs AND files */
-    tmp_action = add_action("make_svn_log_full", i18n("History of item"), KShortcut(Qt::CTRL + Qt::Key_L), KIcon("kdesvnlog"), this, SLOT(slotMakeLog()));
+    tmp_action = add_action("make_svn_log_full", i18n("History of item"), QKeySequence(Qt::CTRL | Qt::Key_L), QIcon::fromTheme("kdesvnlog"), this, SLOT(slotMakeLog()));
     tmp_action->setIconText(i18n("History"));
     tmp_action->setStatusTip(i18n("Displays the history log of selected item"));
-    tmp_action = add_action("make_svn_log_nofollow", i18n("History of item ignoring copies"), KShortcut(Qt::SHIFT + Qt::CTRL + Qt::Key_L), KIcon("kdesvnlog"), this, SLOT(slotMakeLogNoFollow()));
+    tmp_action = add_action("make_svn_log_nofollow", i18n("History of item ignoring copies"), QKeySequence(Qt::SHIFT | Qt::CTRL | Qt::Key_L), QIcon::fromTheme("kdesvnlog"), this, SLOT(slotMakeLogNoFollow()));
     tmp_action->setIconText(i18n("History"));
     tmp_action->setStatusTip(i18n("Displays the history log of selected item without following copies"));
 
-    tmp_action = add_action("make_svn_dir_log_nofollow", i18n("History of item ignoring copies"), KShortcut(), KIcon("kdesvnlog"), this, SLOT(slotDirMakeLogNoFollow()));
+    tmp_action = add_action("make_svn_dir_log_nofollow", i18n("History of item ignoring copies"), QKeySequence(), QIcon::fromTheme("kdesvnlog"), this, SLOT(slotDirMakeLogNoFollow()));
     tmp_action->setIconText(i18n("History"));
     tmp_action->setStatusTip(i18n("Displays the history log of selected item without following copies"));
 
-    tmp_action = add_action("make_svn_tree", i18n("Full revision tree"), KShortcut(Qt::CTRL + Qt::Key_T), KIcon("kdesvntree"), this, SLOT(slotMakeTree()));
+    tmp_action = add_action("make_svn_tree", i18n("Full revision tree"), QKeySequence(Qt::CTRL | Qt::Key_T), QIcon::fromTheme("kdesvntree"), this, SLOT(slotMakeTree()));
     tmp_action->setStatusTip(i18n("Shows history of item as linked tree"));
-    tmp_action = add_action("make_svn_partialtree", i18n("Partial revision tree"), KShortcut(Qt::SHIFT + Qt::CTRL + Qt::Key_T), KIcon("kdesvntree"), this, SLOT(slotMakePartTree()));
+    tmp_action = add_action("make_svn_partialtree", i18n("Partial revision tree"), QKeySequence(Qt::SHIFT | Qt::CTRL | Qt::Key_T), QIcon::fromTheme("kdesvntree"), this, SLOT(slotMakePartTree()));
     tmp_action->setStatusTip(i18n("Shows history of item as linked tree for a revision range"));
 
-    tmp_action = add_action("make_svn_property", i18n("Properties"), KShortcut(Qt::CTRL + Qt::Key_P), KIcon(), this, SLOT(slotRightProperties()));
-    tmp_action = add_action("make_left_svn_property", i18n("Properties"), KShortcut(), KIcon(), this, SLOT(slotLeftProperties()));
-    add_action("get_svn_property", i18n("Display Properties"), KShortcut(Qt::SHIFT + Qt::CTRL + Qt::Key_P), KIcon(), this, SLOT(slotDisplayProperties()));
-    tmp_action = add_action("make_last_change", i18n("Display last changes"), KShortcut(), KIcon("kdesvndiff"), this, SLOT(slotDisplayLastDiff()));
+    tmp_action = add_action("make_svn_property", i18n("Properties"), QKeySequence(Qt::CTRL | Qt::Key_P), QIcon(), this, SLOT(slotRightProperties()));
+    tmp_action = add_action("make_left_svn_property", i18n("Properties"), QKeySequence(), QIcon(), this, SLOT(slotLeftProperties()));
+    add_action("get_svn_property", i18n("Display Properties"), QKeySequence(Qt::SHIFT | Qt::CTRL | Qt::Key_P), QIcon(), this, SLOT(slotDisplayProperties()));
+    tmp_action = add_action("make_last_change", i18n("Display last changes"), QKeySequence(), QIcon::fromTheme("kdesvndiff"), this, SLOT(slotDisplayLastDiff()));
     tmp_action->setToolTip(i18n("Display last changes as difference to previous commit."));
-    tmp_action = add_action("make_svn_info", i18n("Details"), KShortcut(Qt::CTRL + Qt::Key_I), KIcon("kdesvninfo"), this, SLOT(slotInfo()));
+    tmp_action = add_action("make_svn_info", i18n("Details"), QKeySequence(Qt::CTRL | Qt::Key_I), QIcon::fromTheme("kdesvninfo"), this, SLOT(slotInfo()));
     tmp_action->setStatusTip(i18n("Show details about selected item"));
-    tmp_action = add_action("make_svn_rename", i18n("Move"), KShortcut(Qt::Key_F2), KIcon("kdesvnmove"), this, SLOT(slotRename()));
+    tmp_action = add_action("make_svn_rename", i18n("Move"), QKeySequence(Qt::Key_F2), QIcon::fromTheme("kdesvnmove"), this, SLOT(slotRename()));
     tmp_action->setStatusTip(i18n("Moves or renames current item"));
-    tmp_action = add_action("make_svn_copy", i18n("Copy"), KShortcut(Qt::CTRL + Qt::Key_C), KIcon("kdesvncopy"), this, SLOT(slotCopy()));
+    tmp_action = add_action("make_svn_copy", i18n("Copy"), QKeySequence(Qt::CTRL | Qt::Key_C), QIcon::fromTheme("kdesvncopy"), this, SLOT(slotCopy()));
     tmp_action->setStatusTip(i18n("Create a copy of current item"));
-    tmp_action = add_action("make_check_updates", i18n("Check for updates"), KShortcut(), KIcon("kdesvncheckupdates"), this, SLOT(slotCheckUpdates()));
+    tmp_action = add_action("make_check_updates", i18n("Check for updates"), QKeySequence(), QIcon::fromTheme("kdesvncheckupdates"), this, SLOT(slotCheckUpdates()));
     tmp_action->setToolTip(i18n("Check if current working copy has items with newer version in repository"));
     tmp_action->setStatusTip(tmp_action->toolTip());
     tmp_action->setIconText(i18n("Check updates"));
 
     /* 2. actions only on files */
-    tmp_action = add_action("make_svn_blame", i18n("Blame"), KShortcut(), KIcon("kdesvnblame"), this, SLOT(slotBlame()));
+    tmp_action = add_action("make_svn_blame", i18n("Blame"), QKeySequence(), QIcon::fromTheme("kdesvnblame"), this, SLOT(slotBlame()));
     tmp_action->setToolTip(i18n("Output the content of specified files or URLs with revision and author information in-line."));
     tmp_action->setStatusTip(tmp_action->toolTip());
-    tmp_action = add_action("make_svn_range_blame", i18n("Blame range"), KShortcut(), KIcon("kdesvnblame"), this, SLOT(slotRangeBlame()));
+    tmp_action = add_action("make_svn_range_blame", i18n("Blame range"), QKeySequence(), QIcon::fromTheme("kdesvnblame"), this, SLOT(slotRangeBlame()));
     tmp_action->setToolTip(i18n("Output the content of specified files or URLs with revision and author information in-line."));
     tmp_action->setStatusTip(tmp_action->toolTip());
 
-    tmp_action = add_action("make_svn_cat", i18n("Cat head"), KShortcut(), KIcon("kdesvncat"), this, SLOT(slotCat()));
+    tmp_action = add_action("make_svn_cat", i18n("Cat head"), QKeySequence(), QIcon::fromTheme("kdesvncat"), this, SLOT(slotCat()));
     tmp_action->setToolTip(i18n("Output the content of specified files or URLs."));
     tmp_action->setStatusTip(tmp_action->toolTip());
-    tmp_action = add_action("make_revisions_cat", i18n("Cat revision..."), KShortcut(), KIcon("kdesvncat"), this, SLOT(slotRevisionCat()));
+    tmp_action = add_action("make_revisions_cat", i18n("Cat revision..."), QKeySequence(), QIcon::fromTheme("kdesvncat"), this, SLOT(slotRevisionCat()));
     tmp_action->setToolTip(i18n("Output the content of specified files or URLs at specific revision."));
     tmp_action->setStatusTip(tmp_action->toolTip());
 
-    tmp_action = add_action("make_svn_lock", i18n("Lock current items"), KShortcut(), KIcon("kdesvnlock"), this, SLOT(slotLock()));
+    tmp_action = add_action("make_svn_lock", i18n("Lock current items"), QKeySequence(), QIcon::fromTheme("kdesvnlock"), this, SLOT(slotLock()));
     tmp_action->setToolTip(i18n("Try lock current item against changes from other users"));
     tmp_action->setStatusTip(tmp_action->toolTip());
-    tmp_action = add_action("make_svn_unlock", i18n("Unlock current items"), KShortcut(), KIcon("kdesvnunlock"), this, SLOT(slotUnlock()));
+    tmp_action = add_action("make_svn_unlock", i18n("Unlock current items"), QKeySequence(), QIcon::fromTheme("kdesvnunlock"), this, SLOT(slotUnlock()));
     tmp_action->setToolTip(i18n("Free existing lock on current item"));
     tmp_action->setStatusTip(tmp_action->toolTip());
 
     /* 3. actions only on dirs */
-    tmp_action = add_action("make_svn_mkdir", i18n("New folder"), KShortcut(), KIcon("kdesvnnewfolder"), this, SLOT(slotMkdir()));
+    tmp_action = add_action("make_svn_mkdir", i18n("New folder"), QKeySequence(), QIcon::fromTheme("kdesvnnewfolder"), this, SLOT(slotMkdir()));
     tmp_action->setStatusTip(i18n("Create a new folder"));
-    tmp_action = add_action("make_svn_switch", i18n("Switch repository"), KShortcut(), KIcon("kdesvnswitch"), m_Data->m_Model->svnWrapper(), SLOT(slotSwitch()));
+    tmp_action = add_action("make_svn_switch", i18n("Switch repository"), QKeySequence(), QIcon::fromTheme("kdesvnswitch"), m_Data->m_Model->svnWrapper(), SLOT(slotSwitch()));
     tmp_action->setToolTip(i18n("Switch repository path of current working copy path (\"svn switch\")"));
     tmp_action->setStatusTip(tmp_action->toolTip());
 
-    tmp_action = add_action("make_svn_relocate", i18n("Relocate current working copy URL"), KShortcut(), KIcon("kdesvnrelocate"), this, SLOT(slotRelocate()));
+    tmp_action = add_action("make_svn_relocate", i18n("Relocate current working copy URL"), QKeySequence(), QIcon::fromTheme("kdesvnrelocate"), this, SLOT(slotRelocate()));
     tmp_action->setToolTip(i18n("Relocate URL of current working copy path to other URL"));
     tmp_action->setStatusTip(tmp_action->toolTip());
 
-    tmp_action = add_action("make_check_unversioned", i18n("Check for unversioned items"), KShortcut(), KIcon("kdesvnaddrecursive"), this, SLOT(slotCheckNewItems()));
+    tmp_action = add_action("make_check_unversioned", i18n("Check for unversioned items"), QKeySequence(), QIcon::fromTheme("kdesvnaddrecursive"), this, SLOT(slotCheckNewItems()));
     tmp_action->setIconText(i18n("Unversioned"));
     tmp_action->setToolTip(i18n("Browse folder for unversioned items and add them if wanted."));
     tmp_action->setStatusTip(tmp_action->toolTip());
 
-    tmp_action = add_action("make_switch_to_repo", i18n("Open repository of working copy"), KShortcut(), KIcon("kdesvnrepository"),
+    tmp_action = add_action("make_switch_to_repo", i18n("Open repository of working copy"), QKeySequence(), QIcon::fromTheme("kdesvnrepository"),
                             this, SLOT(slotChangeToRepository()));
     tmp_action->setToolTip(i18n("Opens the repository the current working copy was checked out from"));
 
-    tmp_action = add_action("make_cleanup", i18n("Cleanup"), KShortcut(), KIcon("kdesvncleanup"), this, SLOT(slotCleanupAction()));
+    tmp_action = add_action("make_cleanup", i18n("Cleanup"), QKeySequence(), QIcon::fromTheme("kdesvncleanup"), this, SLOT(slotCleanupAction()));
     tmp_action->setToolTip(i18n("Recursively clean up the working copy, removing locks, resuming unfinished operations, etc."));
-    tmp_action = add_action("make_import_dirs_into_current", i18n("Import folders into current"), KShortcut(), KIcon("kdesvnimportfolder"),
+    tmp_action = add_action("make_import_dirs_into_current", i18n("Import folders into current"), QKeySequence(), QIcon::fromTheme("kdesvnimportfolder"),
                             this, SLOT(slotImportDirsIntoCurrent()));
     tmp_action->setToolTip(i18n("Import folder content into current URL"));
 
     /* local only actions */
     /* 1. actions on files AND dirs*/
-    tmp_action = add_action("make_svn_add", i18n("Add selected files/dirs"), KShortcut(Qt::Key_Insert), KIcon("kdesvnadd"), m_Data->m_Model->svnWrapper(), SLOT(slotAdd()));
+    tmp_action = add_action("make_svn_add", i18n("Add selected files/dirs"), QKeySequence(Qt::Key_Insert), QIcon::fromTheme("kdesvnadd"), m_Data->m_Model->svnWrapper(), SLOT(slotAdd()));
     tmp_action->setToolTip(i18n("Adding selected files and/or directories to repository"));
     tmp_action->setIconText(i18n("Add"));
-    tmp_action = add_action("make_svn_addrec", i18n("Add selected files/dirs recursive"), KShortcut(Qt::CTRL + Qt::Key_Insert), KIcon("kdesvnaddrecursive"),
+    tmp_action = add_action("make_svn_addrec", i18n("Add selected files/dirs recursive"), QKeySequence(Qt::CTRL | Qt::Key_Insert), QIcon::fromTheme("kdesvnaddrecursive"),
                             m_Data->m_Model->svnWrapper(), SLOT(slotAddRec()));
     tmp_action->setToolTip(i18n("Adding selected files and/or directories to repository and all subitems of folders"));
 
-    tmp_action = add_action("make_svn_remove", i18n("Delete selected files/dirs"), KShortcut(Qt::Key_Delete), KIcon("kdesvndelete"), this, SLOT(slotDelete()));
+    tmp_action = add_action("make_svn_remove", i18n("Delete selected files/dirs"), QKeySequence(Qt::Key_Delete), QIcon::fromTheme("kdesvndelete"), this, SLOT(slotDelete()));
     tmp_action->setIconText(i18n("Delete"));
     tmp_action->setToolTip(i18n("Deleting selected files and/or directories from repository"));
-    tmp_action = add_action("make_svn_remove_left", i18n("Delete folder"), KShortcut(), KIcon("kdesvndelete"), this, SLOT(slotLeftDelete()));
+    tmp_action = add_action("make_svn_remove_left", i18n("Delete folder"), QKeySequence(), QIcon::fromTheme("kdesvndelete"), this, SLOT(slotLeftDelete()));
     tmp_action->setToolTip(i18n("Deleting selected directories from repository"));
     tmp_action->setIconText(i18n("Delete"));
-    tmp_action  = add_action("make_svn_revert", i18n("Revert current changes"), KShortcut(), KIcon("kdesvnreverse"), m_Data->m_Model->svnWrapper(), SLOT(slotRevert()));
+    tmp_action  = add_action("make_svn_revert", i18n("Revert current changes"), QKeySequence(Qt::CTRL | Qt::Key_R), QIcon::fromTheme("kdesvnreverse"), m_Data->m_Model->svnWrapper(), SLOT(slotRevert()));
 
-    tmp_action = add_action("make_resolved", i18n("Mark resolved"), KShortcut(), KIcon("kdesvnresolved"), this, SLOT(slotResolved()));
+    tmp_action = add_action("make_resolved", i18n("Mark resolved"), QKeySequence(), QIcon::fromTheme("kdesvnresolved"), this, SLOT(slotResolved()));
     tmp_action->setToolTip(i18n("Marking files or dirs resolved"));
 
-    tmp_action = add_action("make_try_resolve", i18n("Resolve conflicts"), KShortcut(), KIcon("kdesvnresolved"), this, SLOT(slotTryResolve()));
+    tmp_action = add_action("make_try_resolve", i18n("Resolve conflicts"), QKeySequence(), QIcon::fromTheme("kdesvnresolved"), this, SLOT(slotTryResolve()));
 
-    tmp_action = add_action("make_svn_ignore", i18n("Ignore/Unignore current item"), KShortcut(), KIcon(), this, SLOT(slotIgnore()));
-    tmp_action = add_action("make_left_add_ignore_pattern", i18n("Add or Remove ignore pattern"), KShortcut(), KIcon(), this, SLOT(slotLeftRecAddIgnore()));
-    tmp_action = add_action("make_right_add_ignore_pattern", i18n("Add or Remove ignore pattern"), KShortcut(), KIcon(), this, SLOT(slotRightRecAddIgnore()));
+    tmp_action = add_action("make_svn_ignore", i18n("Ignore/Unignore current item"), QKeySequence(), QIcon(), this, SLOT(slotIgnore()));
+    tmp_action = add_action("make_left_add_ignore_pattern", i18n("Add or Remove ignore pattern"), QKeySequence(), QIcon(), this, SLOT(slotLeftRecAddIgnore()));
+    tmp_action = add_action("make_right_add_ignore_pattern", i18n("Add or Remove ignore pattern"), QKeySequence(), QIcon(), this, SLOT(slotRightRecAddIgnore()));
 
-    tmp_action = add_action("make_svn_headupdate", i18n("Update to head"), KShortcut(), KIcon("kdesvnupdate"), m_Data->m_Model->svnWrapper(), SLOT(slotUpdateHeadRec()));
+    tmp_action = add_action("make_svn_headupdate", i18n("Update to head"), QKeySequence(), QIcon::fromTheme("kdesvnupdate"), m_Data->m_Model->svnWrapper(), SLOT(slotUpdateHeadRec()));
     tmp_action->setIconText(i18nc("Menu item", "Update"));
-    tmp_action = add_action("make_svn_revupdate", i18n("Update to revision..."), KShortcut(), KIcon("kdesvnupdate"), m_Data->m_Model->svnWrapper(), SLOT(slotUpdateTo()));
-    tmp_action = add_action("make_svn_commit", i18n("Commit"), KShortcut("CTRL+#"), KIcon("kdesvncommit"), this, SLOT(slotCommit()));
+    tmp_action = add_action("make_svn_revupdate", i18n("Update to revision..."), QKeySequence(), QIcon::fromTheme("kdesvnupdate"), m_Data->m_Model->svnWrapper(), SLOT(slotUpdateTo()));
+    tmp_action = add_action("make_svn_commit", i18n("Commit"), QKeySequence("CTRL+#"), QIcon::fromTheme("kdesvncommit"), this, SLOT(slotCommit()));
     tmp_action->setIconText(i18n("Commit"));
 
-    tmp_action = add_action("make_svn_basediff", i18n("Diff local changes"), KShortcut(Qt::CTRL + Qt::Key_D), KIcon("kdesvndiff"), this, SLOT(slotSimpleBaseDiff()));
+    tmp_action = add_action("make_svn_basediff", i18n("Diff local changes"), QKeySequence(Qt::CTRL | Qt::Key_D), QIcon::fromTheme("kdesvndiff"), this, SLOT(slotSimpleBaseDiff()));
     tmp_action->setToolTip(i18n("Diff working copy against BASE (last checked out version) - does not require access to repository"));
-    tmp_action = add_action("make_svn_dirbasediff", i18n("Diff local changes"), KShortcut(), KIcon("kdesvndiff"), this, SLOT(slotDirSimpleBaseDiff()));
+    tmp_action = add_action("make_svn_dirbasediff", i18n("Diff local changes"), QKeySequence(), QIcon::fromTheme("kdesvndiff"), this, SLOT(slotDirSimpleBaseDiff()));
     tmp_action->setToolTip(i18n("Diff working copy against BASE (last checked out version) - does not require access to repository"));
 
     tmp_action =
-        add_action("make_svn_headdiff", i18n("Diff against HEAD"), KShortcut(Qt::CTRL + Qt::Key_H), KIcon("kdesvndiff"), this, SLOT(slotSimpleHeadDiff()));
+        add_action("make_svn_headdiff", i18n("Diff against HEAD"), QKeySequence(Qt::CTRL | Qt::Key_H), QIcon::fromTheme("kdesvndiff"), this, SLOT(slotSimpleHeadDiff()));
     tmp_action->setToolTip(i18n("Diff working copy against HEAD (last checked in version)- requires access to repository"));
 
     tmp_action =
-        add_action("make_svn_itemsdiff", i18n("Diff items"), KShortcut(), KIcon("kdesvndiff"), this, SLOT(slotDiffPathes()));
+        add_action("make_svn_itemsdiff", i18n("Diff items"), QKeySequence(), QIcon::fromTheme("kdesvndiff"), this, SLOT(slotDiffPathes()));
     tmp_action->setToolTip(i18n("Diff two items"));
     tmp_action =
-        add_action("make_svn_diritemsdiff", i18n("Diff items"), KShortcut(), KIcon("kdesvndiff"), this, SLOT(slotDiffPathes()));
+        add_action("make_svn_diritemsdiff", i18n("Diff items"), QKeySequence(), QIcon::fromTheme("kdesvndiff"), this, SLOT(slotDiffPathes()));
     tmp_action->setToolTip(i18n("Diff two items"));
 
+
     tmp_action =
-        add_action("make_svn_merge_revisions", i18n("Merge two revisions"), KShortcut(), KIcon("kdesvnmerge"), this, SLOT(slotMergeRevisions()));
+        add_action("make_svn_merge_revisions", i18n("Merge two revisions"), QKeySequence(), QIcon::fromTheme("kdesvnmerge"), this, SLOT(slotMergeRevisions()));
     tmp_action->setIconText(i18n("Merge"));
     tmp_action->setToolTip(i18n("Merge two revisions of this entry into itself"));
 
     tmp_action =
-        add_action("make_svn_merge", i18n("Merge..."), KShortcut(), KIcon("kdesvnmerge"), this, SLOT(slotMerge()));
+        add_action("make_svn_merge", i18n("Merge..."), QKeySequence(), QIcon::fromTheme("kdesvnmerge"), this, SLOT(slotMerge()));
     tmp_action->setToolTip(i18n("Merge repository path into current working copy path or current repository path into a target"));
-    tmp_action = add_action("openwith", i18n("Open With..."), KShortcut(), KIcon(), this, SLOT(slotOpenWith()));
+    tmp_action = add_action("openwith", i18n("Open With..."), QKeySequence(), QIcon(), this, SLOT(slotOpenWith()));
 
     /* remote actions only */
     tmp_action =
-        add_action("make_svn_checkout_current", i18n("Checkout current repository path"), KShortcut(), KIcon("kdesvncheckout"), m_Data->m_Model->svnWrapper(), SLOT(slotCheckoutCurrent()));
+        add_action("make_svn_checkout_current", i18n("Checkout current repository path"), QKeySequence(), QIcon::fromTheme("kdesvncheckout"), m_Data->m_Model->svnWrapper(), SLOT(slotCheckoutCurrent()));
     tmp_action->setIconText(i18n("Checkout"));
     tmp_action =
-        add_action("make_svn_export_current", i18n("Export current repository path"), KShortcut(), KIcon("kdesvnexport"), m_Data->m_Model->svnWrapper(), SLOT(slotExportCurrent()));
-    add_action("switch_browse_revision", i18n("Select browse revision"), KShortcut(), KIcon(), this, SLOT(slotSelectBrowsingRevision()));
+        add_action("make_svn_export_current", i18n("Export current repository path"), QKeySequence(), QIcon::fromTheme("kdesvnexport"), m_Data->m_Model->svnWrapper(), SLOT(slotExportCurrent()));
+    add_action("switch_browse_revision", i18n("Select browse revision"), QKeySequence(), QIcon(), this, SLOT(slotSelectBrowsingRevision()));
 
     /* independe actions */
     tmp_action =
-        add_action("make_svn_checkout", i18n("Checkout a repository"), KShortcut(), KIcon("kdesvncheckout"), m_Data->m_Model->svnWrapper(), SLOT(slotCheckout()));
+        add_action("make_svn_checkout", i18n("Checkout a repository"), QKeySequence(), QIcon::fromTheme("kdesvncheckout"), m_Data->m_Model->svnWrapper(), SLOT(slotCheckout()));
     tmp_action->setIconText(i18n("Checkout"));
-    tmp_action = add_action("make_svn_export", i18n("Export a repository"), KShortcut(), KIcon("kdesvnexport"), m_Data->m_Model->svnWrapper(), SLOT(slotExport()));
+    tmp_action = add_action("make_svn_export", i18n("Export a repository"), QKeySequence(), QIcon::fromTheme("kdesvnexport"), m_Data->m_Model->svnWrapper(), SLOT(slotExport()));
     tmp_action->setIconText(i18n("Export"));
-    tmp_action = add_action("make_view_refresh", i18n("Refresh view"), KShortcut(Qt::Key_F5), KIcon("kdesvnrightreload"), this, SLOT(refreshCurrentTree()));
+    tmp_action = add_action("make_view_refresh", i18n("Refresh view"), QKeySequence(Qt::Key_F5), QIcon::fromTheme("kdesvnrightreload"), this, SLOT(refreshCurrentTree()));
     tmp_action->setIconText(i18n("Refresh"));
 
-    add_action("make_revisions_diff", i18n("Diff revisions"), KShortcut(), KIcon("kdesvndiff"), this, SLOT(slotDiffRevisions()));
+    add_action("make_revisions_diff", i18n("Diff revisions"), QKeySequence(), QIcon::fromTheme("kdesvndiff"), this, SLOT(slotDiffRevisions()));
 
     /* folding options */
-    tmp_action = add_action("view_unfold_tree", i18n("Unfold File Tree"), KShortcut(), KIcon(), this, SLOT(slotUnfoldTree()));
+    tmp_action = add_action("view_unfold_tree", i18n("Unfold File Tree"), QKeySequence(), QIcon(), this, SLOT(slotUnfoldTree()));
     tmp_action->setToolTip(i18n("Opens all branches of the file tree"));
-    tmp_action = add_action("view_fold_tree", i18n("Fold File Tree"), KShortcut(), KIcon(), this , SLOT(slotFoldTree()));
+    tmp_action = add_action("view_fold_tree", i18n("Fold File Tree"), QKeySequence(), QIcon(), this , SLOT(slotFoldTree()));
     tmp_action->setToolTip(i18n("Closes all branches of the file tree"));
 
     /* caching */
-    tmp_action = add_action("update_log_cache", i18n("Update log cache"), KShortcut(), KIcon(), this, SLOT(slotUpdateLogCache()));
+    tmp_action = add_action("update_log_cache", i18n("Update log cache"), QKeySequence(), QIcon(), this, SLOT(slotUpdateLogCache()));
     tmp_action->setToolTip(i18n("Update the log cache for current repository"));
 
-    tmp_action = add_action("make_dir_commit", i18n("Commit"), KShortcut(), KIcon("kdesvncommit"), this, SLOT(slotDirCommit()));
-    tmp_action = add_action("make_dir_update", i18n("Update to head"), KShortcut(), KIcon("kdesvnupdate"), this, SLOT(slotDirUpdate()));
-    tmp_action = add_action("set_rec_property_dir", i18n("Set property recursive"), KShortcut(), KIcon(), this, SLOT(slotDirRecProperty()));
+    tmp_action = add_action("make_dir_commit", i18n("Commit"), QKeySequence(), QIcon::fromTheme("kdesvncommit"), this, SLOT(slotDirCommit()));
+    tmp_action = add_action("make_dir_update", i18n("Update to head"), QKeySequence(), QIcon::fromTheme("kdesvnupdate"), this, SLOT(slotDirUpdate()));
+    tmp_action = add_action("set_rec_property_dir", i18n("Set property recursive"), QKeySequence(), QIcon(), this, SLOT(slotDirRecProperty()));
 
-    tmp_action = add_action("show_repository_settings", i18n("Settings for current repository"), KShortcut(), KIcon(), this, SLOT(slotRepositorySettings()));
+    tmp_action = add_action("show_repository_settings", i18n("Settings for current repository"), QKeySequence(), QIcon(), this, SLOT(slotRepositorySettings()));
 
     enableActions();
 }
@@ -695,73 +694,94 @@ void MainTreeWidget::enableAction(const QString &name, bool how)
 
 void MainTreeWidget::enableActions()
 {
-    bool isopen = !baseUri().isEmpty();
-    int c = m_TreeView->selectionModel()->selectedRows(0).count();
-    int d = m_DirTreeView->selectionModel()->selectedRows(0).count();
-    SvnItemModelNode *si = SelectedNode();
-    bool single = c == 1 && isopen;
-    bool multi = c > 1 && isopen;
-    bool none = c == 0 && isopen;
-    bool dir = false;
-    bool unique = uniqueTypeSelected();
-    bool remote_enabled =/*isopen&&*/m_Data->m_Model->svnWrapper()->doNetworking();
+    const bool isopen = !baseUri().isEmpty();
+    const SvnItemList fileList = SelectionList();
+    const SvnItemList dirList = DirSelectionList();
+    const SvnItemModelNode *si = SelectedNode();
 
-    if (single && si && si->isDir()) {
-        dir = true;
+    const bool single = isopen && fileList.size() == 1;
+    const bool multi = isopen && fileList.size() > 1;
+    const bool none = isopen && fileList.isEmpty();
+    const bool single_dir = single && si && si->isDir();
+    const bool unique = uniqueTypeSelected();
+    const bool remote_enabled =/*isopen&&*/m_Data->m_Model->svnWrapper()->doNetworking();
+    const bool conflicted = single && si && si->isConflicted();
+
+    bool at_least_one_changed = false;
+    bool at_least_one_conflicted = false;
+    bool at_least_one_local_added = false;
+    for(int i = 0; i < fileList.size(); ++i) {
+      const SvnItem *item = fileList.at(i);
+      if (!item) {
+          // root item
+          continue;
+      }
+      if (item->isChanged()) {
+          at_least_one_changed = true;
+      }
+      if (item->isConflicted()) {
+          at_least_one_conflicted = true;
+      }
+      if (item->isLocalAdded()) {
+          at_least_one_local_added = true;
+      }
     }
 
-    bool conflicted = single && si && si->isConflicted();
+    //qDebug("single: %d, multi: %d, none: %d, single_dir: %d, unique: %d, remove_enabled: %d, conflicted: %d, changed: %d, added: %d",
+    //       single, multi, none, single_dir, unique, remote_enabled, conflicted, si && si->isChanged(), si && si->isLocalAdded());
+    //qDebug("at_least_one_changed: %d, at_least_one_conflicted: %d, at_least_one_local_added: %d",
+    //       at_least_one_changed, at_least_one_conflicted, at_least_one_local_added);
 
     /* local and remote actions */
     /* 1. actions on dirs AND files */
     enableAction("make_svn_log_nofollow", single || none);
-    enableAction("make_svn_dir_log_nofollow", d == 1 && isopen);
+    enableAction("make_svn_dir_log_nofollow", dirList.size() == 1 && isopen);
     enableAction("make_last_change", isopen);
     enableAction("make_svn_log_full", single || none);
     enableAction("make_svn_tree", single || none);
     enableAction("make_svn_partialtree", single || none);
 
     enableAction("make_svn_property", single);
-    enableAction("make_left_svn_property", d == 1);
-    enableAction("set_rec_property_dir", d == 1);
+    enableAction("make_left_svn_property", dirList.size() == 1);
+    enableAction("set_rec_property_dir", dirList.size() == 1);
     enableAction("get_svn_property", single);
     enableAction("make_svn_remove", (multi || single));
-    enableAction("make_svn_remove_left", d > 0);
+    enableAction("make_svn_remove_left", dirList.size() > 0);
     enableAction("make_svn_lock", (multi || single));
     enableAction("make_svn_unlock", (multi || single));
 
     enableAction("make_svn_ignore", (single) && si && si->parent() != 0 && !si->isRealVersioned());
-    enableAction("make_left_add_ignore_pattern", (d == 1) && isWorkingCopy());
-    enableAction("make_right_add_ignore_pattern", dir && isWorkingCopy());
+    enableAction("make_left_add_ignore_pattern", (dirList.size() == 1) && isWorkingCopy());
+    enableAction("make_right_add_ignore_pattern", single_dir && isWorkingCopy());
 
     enableAction("make_svn_rename", single && (!isWorkingCopy() || si != m_Data->m_Model->firstRootChild()));
     enableAction("make_svn_copy", single && (!isWorkingCopy() || si != m_Data->m_Model->firstRootChild()));
 
     /* 2. only on files */
-    enableAction("make_svn_blame", single && !dir && remote_enabled);
-    enableAction("make_svn_range_blame", single && !dir && remote_enabled);
-    enableAction("make_svn_cat", single && !dir);
+    enableAction("make_svn_blame", single && !single_dir && remote_enabled);
+    enableAction("make_svn_range_blame", single && !single_dir && remote_enabled);
+    enableAction("make_svn_cat", single && !single_dir);
 
     /* 3. actions only on dirs */
-    enableAction("make_svn_mkdir", dir || (none && isopen));
+    enableAction("make_svn_mkdir", single_dir || (none && isopen));
     enableAction("make_svn_switch", isWorkingCopy() && (single || none));
     enableAction("make_switch_to_repo", isWorkingCopy());
-    enableAction("make_import_dirs_into_current", dir || d == 1);
+    enableAction("make_import_dirs_into_current", single_dir || dirList.size() == 1);
     enableAction("make_svn_relocate", isWorkingCopy() && (single || none));
 
-    enableAction("make_svn_export_current", ((single && dir) || none));
+    enableAction("make_svn_export_current", ((single && single_dir) || none));
 
     /* local only actions */
     /* 1. actions on files AND dirs*/
     enableAction("make_svn_add", (multi || single) && isWorkingCopy());
-    enableAction("make_svn_revert", (multi || single) && isWorkingCopy() && si && (si->isChanged() || si->isLocalAdded()));
+    enableAction("make_svn_revert", (multi || single) && isWorkingCopy() && (at_least_one_changed || at_least_one_conflicted || at_least_one_local_added));
     enableAction("make_resolved", (multi || single) && isWorkingCopy());
-    enableAction("make_try_resolve", conflicted && !dir);
+    enableAction("make_try_resolve", conflicted && !single_dir);
 
     enableAction("make_svn_info", isopen);
-    enableAction("make_svn_merge_revisions", (single || d == 1) && isWorkingCopy());
-    enableAction("make_svn_merge", single || d == 1 || none);
-    enableAction("make_svn_addrec", (multi || single || d > 0) && isWorkingCopy());
+    enableAction("make_svn_merge_revisions", (single || dirList.size() == 1) && isWorkingCopy());
+    enableAction("make_svn_merge", single || dirList.size() == 1 || none);
+    enableAction("make_svn_addrec", (multi || single || dirList.size() > 0) && isWorkingCopy());
     enableAction("make_svn_headupdate", isWorkingCopy() && isopen && remote_enabled);
     enableAction("make_dir_update", isWorkingCopy() && isopen && remote_enabled);
 
@@ -770,29 +790,29 @@ void MainTreeWidget::enableActions()
     enableAction("make_dir_commit", isWorkingCopy() && isopen && remote_enabled);
 
     enableAction("make_svn_basediff", isWorkingCopy() && (single || none));
-    enableAction("make_svn_dirbasediff", isWorkingCopy() && (d < 2));
+    enableAction("make_svn_dirbasediff", isWorkingCopy() && (dirList.size() < 2));
     enableAction("make_svn_headdiff", isWorkingCopy() && (single || none) && remote_enabled);
 
     /// @todo check if all items have same type
-    enableAction("make_svn_itemsdiff", multi && c == 2 && unique && remote_enabled);
-    enableAction("make_svn_diritemsdiff", d == 2 && isopen && remote_enabled);
+    enableAction("make_svn_itemsdiff", multi && fileList.size() == 2 && unique && remote_enabled);
+    enableAction("make_svn_diritemsdiff", dirList.size() == 2 && isopen && remote_enabled);
 
     /* 2. on dirs only */
-    enableAction("make_cleanup", isWorkingCopy() && (dir || none));
-    enableAction("make_check_unversioned", isWorkingCopy() && ((dir && single) || none));
+    enableAction("make_cleanup", isWorkingCopy() && (single_dir || none));
+    enableAction("make_check_unversioned", isWorkingCopy() && ((single_dir && single) || none));
 
     /* remote actions only */
-    enableAction("make_svn_checkout_current", ((single && dir) || none) && !isWorkingCopy() && remote_enabled);
+    enableAction("make_svn_checkout_current", ((single && single_dir) || none) && !isWorkingCopy() && remote_enabled);
     /* independ actions */
     enableAction("make_svn_checkout", remote_enabled);
     enableAction("make_svn_export", true);
     enableAction("make_view_refresh", isopen);
 
     enableAction("make_revisions_diff", isopen);
-    enableAction("make_revisions_cat", isopen && !dir && single);
+    enableAction("make_revisions_cat", isopen && !single_dir && single);
     enableAction("switch_browse_revision", !isWorkingCopy() && isopen);
     enableAction("make_check_updates", isWorkingCopy() && isopen && remote_enabled);
-    enableAction("openwith", KAuthorized::authorizeKAction("openwith") && single && !dir);
+    enableAction("openwith", KAuthorized::authorizeKAction("openwith") && single && !single_dir);
     enableAction("show_repository_settings", isopen);
 
     enableAction("repo_statistic", isopen);
@@ -808,19 +828,18 @@ void MainTreeWidget::enableActions()
     }
 }
 
-KAction *MainTreeWidget::add_action(const QString &actionname,
+QAction *MainTreeWidget::add_action(const QString &actionname,
                                     const QString &text,
-                                    const KShortcut &sequ,
-                                    const KIcon &icon,
+                                    const QKeySequence &sequ,
+                                    const QIcon &icon,
                                     QObject *target,
                                     const char *slot)
 {
-    KAction *tmp_action = 0;
-    tmp_action = m_Data->m_Collection->addAction(actionname);
+    QAction *tmp_action = 0;
+    tmp_action = m_Data->m_Collection->addAction(actionname, target, slot);
     tmp_action->setText(text);
-    tmp_action->setShortcut(sequ);
+    m_Data->m_Collection->setDefaultShortcut(tmp_action, sequ);
     tmp_action->setIcon(icon);
-    connect(tmp_action, SIGNAL(triggered()), target, slot);
     return tmp_action;
 }
 
@@ -841,7 +860,7 @@ void MainTreeWidget::closeMe()
 
     emit changeCaption(QString());
     emit sigUrlOpend(false);
-    emit sigUrlChanged(QString());
+    emit sigUrlChanged(QUrl());
 
     enableActions();
     m_Data->m_Model->svnWrapper()->reInitClient();
@@ -872,21 +891,20 @@ void MainTreeWidget::slotSettingsChanged()
     checkUseNavigation();
 }
 
-KService::List MainTreeWidget::offersList(SvnItem *item, bool execOnly)const
+KService::List MainTreeWidget::offersList(SvnItem *item, bool execOnly) const
 {
     KService::List offers;
     if (!item) {
         return offers;
     }
-    QString constraint;
-    constraint = "(DesktopEntryName != 'kdesvn') and (Type == 'Application')";
-    if (execOnly) {
-        constraint += QString(" and (exist Exec)");
-    }
-    if (!item->mimeType()) {
+    if (!item->mimeType().isValid()) {
         return offers;
     }
-    offers = KMimeTypeTrader::self()->query(item->mimeType()->name(), QString::fromLatin1("Application"), constraint);
+    QString constraint(QLatin1String("(DesktopEntryName != 'kdesvn') and (Type == 'Application')"));
+    if (execOnly) {
+        constraint += QLatin1String(" and (exist Exec)");
+    }
+    offers = KMimeTypeTrader::self()->query(item->mimeType().name(), QString::fromLatin1("Application"), constraint);
     return offers;
 }
 
@@ -903,17 +921,17 @@ void MainTreeWidget::itemActivated(const QModelIndex &index, bool keypress)
     if (index.isValid() && (item = static_cast<SvnItemModelNode *>(index.internalPointer()))) {
         if (!item->isDir()) {
             svn::Revision rev;
-            KUrl::List lst;
+            QList<QUrl> lst;
             lst.append(item->kdeName(rev));
             KService::List li = offersList(item, true);
-            if (li.count() == 0 || li.first()->exec().isEmpty()) {
+            if (li.isEmpty() || li.first()->exec().isEmpty()) {
                 li = offersList(item);
             }
-            if (li.count() > 0 && !li.first()->exec().isEmpty()) {
+            if (!li.isEmpty() && !li.first()->exec().isEmpty()) {
                 KService::Ptr ptr = li.first();
-                KRun::run(*ptr, lst, KApplication::activeWindow());
+                KRun::runService(*ptr, lst, QApplication::activeWindow());
             } else {
-                KRun::displayOpenWithDialog(lst, KApplication::activeWindow());
+                KRun::displayOpenWithDialog(lst, QApplication::activeWindow());
             }
         } else if (Kdesvnsettings::show_navigation_panel()) {
             m_DirTreeView->selectionModel()->select(m_Data->m_DirSortModel->mapFromSource(index), QItemSelectionModel::ClearAndSelect);
@@ -957,7 +975,7 @@ void MainTreeWidget::readSupportData()
 void MainTreeWidget::slotClientException(const QString &what)
 {
     emit sigLogMessage(what);
-    KMessageBox::sorry(KApplication::activeModalWidget(), what, i18n("SVN Error"));
+    KMessageBox::sorry(QApplication::activeModalWidget(), what, i18n("SVN Error"));
 }
 
 void MainTreeWidget::slotCacheDataChanged()
@@ -1001,11 +1019,11 @@ void MainTreeWidget::slotRightRecAddIgnore()
 
 void MainTreeWidget::recAddIgnore(SvnItem *item)
 {
-    EditIgnorePattern *ptr = 0;
-    QPointer<KDialog> dlg(createOkDialog(&ptr, i18n("Edit pattern to ignore for \"%1\"", item->shortName()),
-                                         true, "ignore_pattern_dlg"));
-    KConfigGroup _k(Kdesvnsettings::self()->config(), "ignore_pattern_dlg");
-    DialogStack _s(dlg, _k);
+    QPointer<KSvnSimpleOkDialog> dlg(new KSvnSimpleOkDialog(QStringLiteral("ignore_pattern_dlg")));
+    dlg->setWindowTitle(i18n("Edit pattern to ignore for \"%1\"", item->shortName()));
+    dlg->setWithCancelButton();
+    EditIgnorePattern *ptr(new EditIgnorePattern(dlg));
+    dlg->addWidget(ptr);
     if (dlg->exec() != QDialog::Accepted) {
         delete dlg;
         return;
@@ -1070,6 +1088,7 @@ void MainTreeWidget::doLog(bool use_follow_settings, bool left)const
     m_Data->m_Model->svnWrapper()->makeLog(start, end, (isWorkingCopy() ? svn::Revision::UNDEFINED : baseRevision()), what, follow, list, l);
 }
 
+
 void MainTreeWidget::slotContextMenu(const QPoint &)
 {
     execContextMenu(SelectionList());
@@ -1077,7 +1096,7 @@ void MainTreeWidget::slotContextMenu(const QPoint &)
 
 void MainTreeWidget::slotDirContextMenu(const QPoint &vp)
 {
-    KMenu popup;
+    QMenu popup;
     QAction *temp = 0;
     int count = 0;
     if ((temp = filesActions()->action("make_dir_commit")) && temp->isEnabled() && ++count) {
@@ -1108,9 +1127,8 @@ void MainTreeWidget::slotDirContextMenu(const QPoint &vp)
         popup.addAction(temp);
     }
 
-    OpenContextmenu *me = 0;
-    QAction *menuAction = 0;
-
+    OpenContextmenu *me = nullptr;
+    QAction *menuAction = nullptr;
     const SvnItemList l = DirSelectionList();
     if (l.count() == 1 && l.at(0)) {
         const KService::List offers = offersList(l.at(0), l.at(0)->isDir());
@@ -1127,6 +1145,7 @@ void MainTreeWidget::slotDirContextMenu(const QPoint &vp)
     }
     if (menuAction) {
         popup.removeAction(menuAction);
+        delete menuAction;
     }
     delete me;
 
@@ -1144,7 +1163,7 @@ void MainTreeWidget::execContextMenu(const SvnItemList &l)
     } else {
         menuname = "remote";
     }
-    if (l.count() == 0) {
+    if (l.isEmpty()) {
         menuname += "_general";
     } else if (l.count() > 1) {
         menuname += "_context_multi";
@@ -1168,6 +1187,7 @@ void MainTreeWidget::execContextMenu(const SvnItemList &l)
         }
     }
 
+    //qDebug("menuname: %s", qPrintable(menuname));
     QWidget *target;
     emit sigShowPopup(menuname, &target);
     QMenu *popup = static_cast<QMenu *>(target);
@@ -1175,10 +1195,9 @@ void MainTreeWidget::execContextMenu(const SvnItemList &l)
         return;
     }
 
-    OpenContextmenu *me = 0;
-    QAction *temp = 0;
-    QAction *menuAction = 0;
-
+    OpenContextmenu *me = nullptr;
+    QAction *temp = nullptr;
+    QAction *menuAction = nullptr;
     if (l.count() == 1/*&&!l.at(0)->isDir()*/) {
         KService::List offers = offersList(l.at(0), l.at(0)->isDir());
         if (!offers.isEmpty()) {
@@ -1200,6 +1219,7 @@ void MainTreeWidget::execContextMenu(const SvnItemList &l)
     delete me;
     if (temp) {
         popup->removeAction(temp);
+        delete temp;
     }
 }
 
@@ -1220,9 +1240,9 @@ void MainTreeWidget::slotOpenWith()
         return;
     }
     svn::Revision rev(isWorkingCopy() ? svn::Revision::UNDEFINED : baseRevision());
-    KUrl::List lst;
+    QList<QUrl> lst;
     lst.append(which->kdeName(rev));
-    KRun::displayOpenWithDialog(lst, KApplication::activeWindow());
+    KRun::displayOpenWithDialog(lst, QApplication::activeWindow());
 }
 
 void MainTreeWidget::slotSelectBrowsingRevision()
@@ -1230,21 +1250,12 @@ void MainTreeWidget::slotSelectBrowsingRevision()
     if (isWorkingCopy()) {
         return;
     }
-    Rangeinput_impl *rdlg = 0;
-    QPointer<KDialog> dlg = createOkDialog(&rdlg, i18n("Revisions"), true, QLatin1String("revisions_dlg"));
-    rdlg->setNoWorking(true);
-    rdlg->setStartOnly(true);
-    if (dlg->exec() == QDialog::Accepted) {
-        Rangeinput_impl::revision_range r = rdlg->getRange();
-        m_Data->m_remoteRevision = r.first;
+    Rangeinput_impl::revision_range range;
+    if (Rangeinput_impl::getRevisionRange(range, false)) {
+        m_Data->m_remoteRevision = range.first;
         clear();
         m_Data->m_Model->checkDirs(baseUri(), 0);
-        emit changeCaption(baseUri() + QLatin1Char('@') + r.first.toString());
-    }
-    if (dlg) {
-        KConfigGroup _k(Kdesvnsettings::self()->config(), "revisions_dlg");
-        dlg->saveDialogSize(_k);
-        delete dlg;
+        emit changeCaption(baseUri() + QLatin1Char('@') + range.first.toString());
     }
 }
 
@@ -1275,17 +1286,10 @@ void MainTreeWidget::slotMakePartTree()
     } else {
         return;
     }
-    Rangeinput_impl *rdlg = 0;
-    QPointer<KDialog> dlg = createOkDialog(&rdlg, i18n("Revisions"), true, QLatin1String("revisions_dlg"));
-    if (dlg->exec() == QDialog::Accepted) {
-        Rangeinput_impl::revision_range r = rdlg->getRange();
+    Rangeinput_impl::revision_range range;
+    if (Rangeinput_impl::getRevisionRange(range)) {
         svn::Revision rev(isWorkingCopy() ? svn::Revision::UNDEFINED : baseRevision());
-        m_Data->m_Model->svnWrapper()->makeTree(what, rev, r.first, r.second);
-    }
-    if (dlg) {
-        KConfigGroup _k(Kdesvnsettings::self()->config(), "revisions_dlg");
-        dlg->saveDialogSize(_k);
-        delete dlg;
+        m_Data->m_Model->svnWrapper()->makeTree(what, rev, range.first, range.second);
     }
 }
 
@@ -1296,8 +1300,10 @@ void MainTreeWidget::slotLock()
         KMessageBox::error(this, i18n("Nothing selected for unlock"));
         return;
     }
-    Commitmsg_impl *ptr = 0;
-    QPointer<KDialog> dlg = createOkDialog(&ptr, i18n("Lock message"), true, QLatin1String("locking_log_msg"));
+    QPointer<KSvnSimpleOkDialog> dlg(new KSvnSimpleOkDialog(QStringLiteral("locking_log_msg")));
+    dlg->setWindowTitle(i18n("Lock message"));
+    dlg->setWithCancelButton();
+    Commitmsg_impl *ptr(new Commitmsg_impl(dlg));
     ptr->initHistory();
     ptr->hideDepth(true);
     ptr->keepsLocks(false);
@@ -1305,14 +1311,13 @@ void MainTreeWidget::slotLock()
     QCheckBox *_stealLock = new QCheckBox(i18n("Steal lock?"));
     ptr->addItemWidget(_stealLock);
 
+    dlg->addWidget(ptr);
     if (dlg->exec() != QDialog::Accepted) {
         if (dlg)
             ptr->saveHistory(true);
         delete dlg;
         return;
     }
-    KConfigGroup _k(Kdesvnsettings::self()->config(), "locking_log_msg");
-    dlg->saveDialogSize(_k);
 
     QString logMessage = ptr->getMessage();
     bool steal = _stealLock->isChecked();
@@ -1328,6 +1333,7 @@ void MainTreeWidget::slotLock()
     delete dlg;
 }
 
+
 /*!
     \fn MainTreeWidget::slotUnlock()
  */
@@ -1338,7 +1344,9 @@ void MainTreeWidget::slotUnlock()
         KMessageBox::error(this, i18n("Nothing selected for unlock"));
         return;
     }
-    int res = KMessageBox::questionYesNoCancel(this, i18n("Break lock or ignore missing locks?"), i18n("Unlocking items"));
+    KMessageBox::ButtonCode res = KMessageBox::questionYesNoCancel(this,
+                                                                   i18n("Break lock or ignore missing locks?"),
+                                                                   i18n("Unlocking items"));
     if (res == KMessageBox::Cancel) {
         return;
     }
@@ -1357,7 +1365,7 @@ void MainTreeWidget::slotDisplayLastDiff()
     SvnItem *kitem = Selected();
     QString what;
     if (isWorkingCopy()) {
-        chdir(baseUri().toLocal8Bit());
+        QDir::setCurrent(baseUri());
     }
     svn::Revision end = svn::Revision::PREV;
     if (!kitem) {
@@ -1412,7 +1420,7 @@ void MainTreeWidget::simpleWcDiff(SvnItem *kitem, const svn::Revision &first, co
 {
     QString what;
     if (isWorkingCopy()) {
-        chdir(baseUri().toLocal8Bit());
+        QDir::setCurrent(baseUri());
     }
 
     if (!kitem) {
@@ -1429,7 +1437,7 @@ void MainTreeWidget::slotDiffRevisions()
     SvnItem *k = Selected();
     QString what;
     if (isWorkingCopy()) {
-        chdir(baseUri().toLocal8Bit());
+        QDir::setCurrent(baseUri());
     }
 
     if (!k) {
@@ -1437,18 +1445,10 @@ void MainTreeWidget::slotDiffRevisions()
     } else {
         what = relativePath(k);
     }
-    Rangeinput_impl *rdlg = 0;
-    QPointer<KDialog> dlg = createOkDialog(&rdlg, i18n("Revisions"), true, QLatin1String("revisions_dlg"));
-    if (dlg->exec() == QDialog::Accepted) {
-        Rangeinput_impl::revision_range r = rdlg->getRange();
+    Rangeinput_impl::revision_range range;
+    if (Rangeinput_impl::getRevisionRange(range)) {
         svn::Revision _peg = (isWorkingCopy() ? svn::Revision::WORKING : baseRevision());
-        m_Data->m_Model->svnWrapper()->makeDiff(what, r.first, r.second, _peg, k ? k->isDir() : true);
-    }
-
-    if (dlg) {
-        KConfigGroup _k(Kdesvnsettings::self()->config(), "revisions_dlg");
-        dlg->saveDialogSize(_k);
-        delete dlg;
+        m_Data->m_Model->svnWrapper()->makeDiff(what, range.first, range.second, _peg, k ? k->isDir() : true);
     }
 }
 
@@ -1470,14 +1470,13 @@ void MainTreeWidget::slotDiffPathes()
         return;
     }
 
-    SvnItem *k1, *k2;
-    k1 = lst[0];
-    k2 = lst[1];
+    SvnItem *k1 = lst.at(0);
+    SvnItem *k2 = lst.at(1);
     QString w1, w2;
     svn::Revision r1;
 
     if (isWorkingCopy()) {
-        chdir(baseUri().toLocal8Bit());
+        QDir::setCurrent(baseUri());
         w1 = relativePath(k1);
         w2 = relativePath(k2);
         r1 = svn::Revision::WORKING;
@@ -1526,16 +1525,9 @@ void MainTreeWidget::slotRangeBlame()
     if (!k) {
         return;
     }
-    Rangeinput_impl *rdlg = 0;
-    QPointer<KDialog> dlg = createOkDialog(&rdlg, i18n("Revisions"), true, QLatin1String("revisions_dlg"));
-    if (dlg->exec() == QDialog::Accepted) {
-        Rangeinput_impl::revision_range r = rdlg->getRange();
-        m_Data->m_Model->svnWrapper()->makeBlame(r.first, r.second, k);
-    }
-    if (dlg) {
-      KConfigGroup _k(Kdesvnsettings::self()->config(), "revisions_dlg");
-      dlg->saveDialogSize(_k);
-      delete dlg;
+    Rangeinput_impl::revision_range range;
+    if (Rangeinput_impl::getRevisionRange(range)) {
+        m_Data->m_Model->svnWrapper()->makeBlame(range.first, range.second, k);
     }
 }
 
@@ -1588,7 +1580,7 @@ void MainTreeWidget::slotCat()
         return;
     }
     m_Data->m_Model->svnWrapper()->slotMakeCat(isWorkingCopy() ? svn::Revision::HEAD : baseRevision(), k->fullName(), k->shortName(),
-            isWorkingCopy() ? svn::Revision::HEAD : baseRevision(), 0);
+                                               isWorkingCopy() ? svn::Revision::HEAD : baseRevision(), 0);
 }
 
 void MainTreeWidget::slotRevisionCat()
@@ -1597,17 +1589,9 @@ void MainTreeWidget::slotRevisionCat()
     if (!k) {
         return;
     }
-    Rangeinput_impl *rdlg = 0;
-    QPointer<KDialog> dlg = createOkDialog(&rdlg, i18n("Revisions"), true, QLatin1String("revisions_dlg"));
-    rdlg->setStartOnly(true);
-    if (dlg->exec() == QDialog::Accepted) {
-        Rangeinput_impl::revision_range r = rdlg->getRange();
-        m_Data->m_Model->svnWrapper()->slotMakeCat(r.first, k->fullName(), k->shortName(), isWorkingCopy() ? svn::Revision::WORKING : baseRevision(), 0);
-    }
-    if (dlg) {
-        KConfigGroup _k(Kdesvnsettings::self()->config(), "revisions_dlg");
-        dlg->saveDialogSize(_k);
-        delete dlg;
+    Rangeinput_impl::revision_range range;
+    if (Rangeinput_impl::getRevisionRange(range, true, true)) {
+        m_Data->m_Model->svnWrapper()->slotMakeCat(range.first, k->fullName(), k->shortName(), isWorkingCopy() ? svn::Revision::WORKING : baseRevision(), 0);
     }
 }
 
@@ -1649,17 +1633,17 @@ void MainTreeWidget::slotDelete()
 
 void MainTreeWidget::makeDelete(const SvnItemList &lst)
 {
-    if (lst.size() == 0) {
+    if (lst.isEmpty()) {
         KMessageBox::error(this, i18n("Nothing selected for delete"));
         return;
     }
     svn::Paths items;
     QStringList displist;
-    KUrl::List kioList;
+    QList<QUrl> kioList;
     SvnItemList::const_iterator liter;
     for (liter = lst.begin(); liter != lst.end(); ++liter) {
         if (!(*liter)->isRealVersioned()) {
-            KUrl _uri; _uri.setPath((*liter)->fullName());
+            QUrl _uri(QUrl::fromLocalFile((*liter)->fullName()));
             kioList.append(_uri);
         } else {
             items.push_back((*liter)->fullName());
@@ -1667,19 +1651,19 @@ void MainTreeWidget::makeDelete(const SvnItemList &lst)
         displist.append((*liter)->fullName());
     }
 
-    DeleteForm_impl *ptr = 0;
-    QPointer<KDialog> dlg = createYesDialog(&ptr, i18n("Really delete these entries?"), true, QLatin1String("delete_items_dialog"), true);
-    ptr->setStringList(displist);
-    ptr->showExtraButtons(isWorkingCopy() && !items.isEmpty());
+    QPointer<DeleteForm> dlg(new DeleteForm(displist, QApplication::activeModalWidget()));
+    dlg->showExtraButtons(isWorkingCopy() && !items.isEmpty());
 
-    if (dlg->exec() == KDialog::Yes) {
-        bool force = ptr->force_delete();
-        bool keep = ptr->keep_local();
+    if (dlg->exec() == QDialog::Accepted) {
+        bool force = dlg->force_delete();
+        bool keep = dlg->keep_local();
         WidgetBlockStack st(this);
-        if (kioList.count() > 0) {
+        if (!kioList.isEmpty()) {
             KIO::Job *aJob = KIO::del(kioList);
             if (!aJob->exec()) {
-                aJob->showErrorDialog(this);
+                KJobWidgets::setWindow(aJob, this);
+                aJob->ui()->showErrorMessage();
+                delete dlg;
                 return;
             }
         }
@@ -1688,37 +1672,26 @@ void MainTreeWidget::makeDelete(const SvnItemList &lst)
         }
         refreshCurrentTree();
     }
-    if (dlg) {
-        KConfigGroup _kc(Kdesvnsettings::self()->config(), "delete_items_dialog");
-        dlg->saveDialogSize(_kc);
-        delete dlg;
-    }
+    delete dlg;
 }
 
-void MainTreeWidget::internalDrop(const KUrl::List &_lst, Qt::DropAction action, const QModelIndex &index)
+void MainTreeWidget::internalDrop(const QList<QUrl> &_lst, Qt::DropAction action, const QModelIndex &index)
 {
     if (_lst.isEmpty()) {
         return;
     }
-    KUrl::List lst = _lst;
+    QList<QUrl> lst = _lst;
     QString target;
     QString nProto;
 
     if (!isWorkingCopy()) {
-        nProto = svn::Url::transformProtokoll(lst[0].protocol());
+        nProto = svn::Url::transformProtokoll(lst[0].scheme());
     }
-    KUrl::List::iterator it = lst.begin();
-    QStringList l;
+    QList<QUrl>::iterator it = lst.begin();
     for (; it != lst.end(); ++it) {
-        l = (*it).prettyUrl().split('?');
-        if (l.size() > 1) {
-            (*it) = l[0];
-        } else if (isWorkingCopy()) {
-            (*it) = KUrl::fromPathOrUrl((*it).path());
-        }
+        (*it).setQuery(QUrlQuery());
         if (!nProto.isEmpty())
-            (*it).setProtocol(nProto);
-        kDebug() << "Dropped: " << (*it) << endl;
+            (*it).setScheme(nProto);
     }
 
     if (index.isValid()) {
@@ -1728,31 +1701,31 @@ void MainTreeWidget::internalDrop(const KUrl::List &_lst, Qt::DropAction action,
         target = baseUri();
     }
     if (action == Qt::MoveAction) {
-        m_Data->m_Model->svnWrapper()->makeMove(lst, target, false);
+        m_Data->m_Model->svnWrapper()->makeMove(lst, target);
     } else if (action == Qt::CopyAction) {
         m_Data->m_Model->svnWrapper()->makeCopy(lst, target, (isWorkingCopy() ? svn::Revision::UNDEFINED : baseRevision()));
     }
     refreshCurrentTree();
 }
 
-void MainTreeWidget::slotUrlDropped(const KUrl::List &_lst, Qt::DropAction action, const QModelIndex &index, bool intern)
+void MainTreeWidget::slotUrlDropped(const QList<QUrl> &_lst, Qt::DropAction action, const QModelIndex &index, bool intern)
 {
-    if (_lst.size() == 0) {
+    if (_lst.isEmpty()) {
         return;
     }
     if (intern) {
         internalDrop(_lst, action, index);
         return;
     }
-    QString target;
+    QUrl target;
     if (index.isValid()) {
         SvnItemModelNode *node = static_cast<SvnItemModelNode *>(index.internalPointer());
-        target = node->fullName();
+        target = node->Url();
     } else {
-        target = baseUri();
+        target = baseUriAsUrl();
     }
 
-    if (baseUri().length() == 0) {
+    if (baseUri().isEmpty()) {
         openUrl(_lst[0]);
         return;
     }
@@ -1760,12 +1733,11 @@ void MainTreeWidget::slotUrlDropped(const KUrl::List &_lst, Qt::DropAction actio
     QFileInfo fi(path);
     if (!isWorkingCopy()) {
         if (!fi.isDir()) {
-            target += '/' + _lst[0].fileName();
+            target.setPath(target.path() + QLatin1Char('/') + _lst[0].fileName());
         }
-        slotImportIntoDir(_lst[0], target, fi.isDir());
+        slotImportIntoDir(_lst[0].toLocalFile(), target, fi.isDir());
     } else {
         WidgetBlockStack w(this);
-        //m_pList->stopScan();
         KIO::Job *job = KIO::copy(_lst, target);
         connect(job, SIGNAL(result(KJob*)), SLOT(slotCopyFinished(KJob*)));
         job->exec();
@@ -1780,17 +1752,17 @@ void MainTreeWidget::slotCopyFinished(KJob *_job)
     }
     bool ok = true;
     if (job->error()) {
-        job->showErrorDialog(this);
+        KJobWidgets::setWindow(job, this);
+        job->ui()->showErrorMessage();
         ok = false;
     }
     if (ok) {
-        const KUrl::List lst = job->srcUrls();
-        const QString base = job->destUrl().path(KUrl::AddTrailingSlash);
+        const QList<QUrl> lst = job->srcUrls();
+        const QString base = job->destUrl().toLocalFile() + QLatin1Char('/');
         svn::Paths tmp;
         tmp.reserve(lst.size());
-        Q_FOREACH(const KUrl &url, lst) {
-            QString _ne = base + url.fileName(KUrl::IgnoreTrailingSlash);
-            tmp.push_back(svn::Path(_ne));
+        Q_FOREACH(const QUrl &url, lst) {
+            tmp.push_back(svn::Path(base + url.fileName()));
         }
         m_Data->m_Model->svnWrapper()->addItems(tmp, svn::DepthInfinity);
     }
@@ -1826,17 +1798,17 @@ void MainTreeWidget::slotUpdateLogCache()
 
 void MainTreeWidget::slotMkBaseDirs()
 {
-    bool isopen = baseUri().length() > 0;
+    bool isopen = !baseUri().isEmpty();
     if (!isopen) {
         return;
     }
     QString parentDir = baseUri();
-    QStringList targets;
-    targets.append(parentDir + "/trunk");
-    targets.append(parentDir + "/branches");
-    targets.append(parentDir + "/tags");
+    svn::Paths targets;
+    targets.append(svn::Path(parentDir + QLatin1String("/trunk")));
+    targets.append(svn::Path(parentDir + QLatin1String("/branches")));
+    targets.append(svn::Path(parentDir + QLatin1String("/tags")));
     QString msg = i18n("Automatic generated base layout by kdesvn");
-    isopen = m_Data->m_Model->svnWrapper()->makeMkdir(targets, msg);
+    isopen = m_Data->m_Model->svnWrapper()->makeMkdir(svn::Targets(targets), msg);
     if (isopen) {
         refreshCurrentTree();
     }
@@ -1875,17 +1847,17 @@ void MainTreeWidget::copy_move(bool move)
     if (isWorkingCopy() && SelectedNode() == m_Data->m_Model->firstRootChild()) {
         return;
     }
-    bool ok, force;
+    bool ok;
     SvnItemModelNode *which = SelectedNode();
     if (!which) {
         return;
     }
-    QString nName = CopyMoveView_impl::getMoveCopyTo(&ok, &force, move, which->fullName(), baseUri(), this);
+    QString nName = CopyMoveView_impl::getMoveCopyTo(&ok, move, which->fullName(), baseUri(), this);
     if (!ok) {
         return;
     }
     if (move) {
-        m_Data->m_Model->svnWrapper()->makeMove(which->fullName(), nName, force);
+        m_Data->m_Model->svnWrapper()->makeMove(which->fullName(), nName);
     } else {
         m_Data->m_Model->svnWrapper()->makeCopy(which->fullName(), nName, isWorkingCopy() ? svn::Revision::HEAD : baseRevision());
     }
@@ -1917,13 +1889,13 @@ void MainTreeWidget::slotMergeRevisions()
     if (!which) {
         return;
     }
-    bool force, dry, rec, irelated, useExternal;
+    bool force, dry, rec, irelated, useExternal, allowmixedrevs;
     Rangeinput_impl::revision_range range;
-    if (!MergeDlg_impl::getMergeRange(range, &force, &rec, &irelated, &dry, &useExternal, this)) {
+    if (!MergeDlg_impl::getMergeRange(range, &force, &rec, &irelated, &dry, &useExternal, &allowmixedrevs, this)) {
         return;
     }
     if (!useExternal) {
-        m_Data->m_Model->svnWrapper()->slotMergeWcRevisions(which->fullName(), range.first, range.second, rec, !irelated, force, dry);
+        m_Data->m_Model->svnWrapper()->slotMergeWcRevisions(which->fullName(), range.first, range.second, rec, !irelated, force, dry, allowmixedrevs);
     } else {
         m_Data->m_Model->svnWrapper()->slotMergeExternal(which->fullName(), which->fullName(), which->fullName(),
                                                          range.first, range.second,
@@ -1956,12 +1928,15 @@ void MainTreeWidget::slotMerge()
         target = m_Data->merge_Target;
     }
     src2 = m_Data->merge_Src2;
-    MergeDlg_impl *ptr = 0;
-    QPointer<KDialog> dlg = createOkDialog(&ptr, i18n("Merge"), true, QLatin1String("merge_dialog"), true);
-    dlg->setHelp("merging-items", "kdesvn");
+    QPointer<KSvnSimpleOkDialog> dlg(new KSvnSimpleOkDialog(QStringLiteral("merge_dialog")));
+    dlg->setWindowTitle(i18n("Merge"));
+    dlg->setWithCancelButton();
+    dlg->setHelp(QLatin1String("merging-items"));
+    MergeDlg_impl *ptr(new MergeDlg_impl(dlg));
     ptr->setDest(target);
     ptr->setSrc1(src1);
     ptr->setSrc2(src1);
+    dlg->addWidget(ptr);
     if (dlg->exec() == QDialog::Accepted) {
         src1 = ptr->Src1();
         src2 = ptr->Src2();
@@ -1977,13 +1952,14 @@ void MainTreeWidget::slotMerge()
         bool rec = ptr->recursive();
         bool irelated = ptr->ignorerelated();
         bool useExternal = ptr->useExtern();
+        bool allowmixedrevs = ptr->allowmixedrevs();
         bool recordOnly = ptr->recordOnly();
         Rangeinput_impl::revision_range range = ptr->getRange();
         bool reintegrate = ptr->reintegrate();
         if (!useExternal) {
             m_Data->m_Model->svnWrapper()->slotMerge(src1, src2, target, range.first, range.second,
                                                      isWorkingCopy() ? svn::Revision::UNDEFINED : m_Data->m_remoteRevision,
-                                                     rec, !irelated, force, dry, recordOnly, reintegrate);
+                                                     rec, !irelated, force, dry, recordOnly, reintegrate, allowmixedrevs);
         } else {
             m_Data->m_Model->svnWrapper()->slotMergeExternal(src1, src2, target, range.first, range.second,
                                                              isWorkingCopy() ? svn::Revision::UNDEFINED : m_Data->m_remoteRevision,
@@ -1995,12 +1971,7 @@ void MainTreeWidget::slotMerge()
             refreshCurrentTree();
         }
     }
-
-    if (dlg) {
-        KConfigGroup _k(Kdesvnsettings::self()->config(), "merge_dialog");
-        dlg->saveDialogSize(_k);
-        delete dlg;
-    }
+    delete dlg;
     enableActions();
 }
 
@@ -2014,34 +1985,40 @@ void MainTreeWidget::slotRelocate()
         KMessageBox::error(0, i18n("Error getting entry to relocate"));
         return;
     }
-    QString path, fromUrl;
-    path = k->fullName();
-    fromUrl = k->Url();
-    CheckoutInfo_impl *ptr = 0;
-    QPointer<KDialog> dlg = createOkDialog(&ptr, i18n("Relocate path %1", path), true, QLatin1String("relocate_dlg"));
-    if (dlg) {
-        ptr->setStartUrl(fromUrl);
-        ptr->disableAppend(true);
-        ptr->disableTargetDir(true);
-        ptr->disableRange(true);
-        ptr->disableOpen(true);
-        ptr->disableExternals(true);
-        ptr->hideDepth(true, true);
-        bool done = false;
-        KConfigGroup _k(Kdesvnsettings::self()->config(), "relocate_dlg");
-        dlg->restoreDialogSize(_k);
-        if (dlg->exec() == QDialog::Accepted) {
-            done = m_Data->m_Model->svnWrapper()->makeRelocate(fromUrl, ptr->reposURL(), path, ptr->overwrite());
-        }
-        if (dlg) {
-            dlg->saveDialogSize(_k);
+    const QString path = k->fullName();
+    const QUrl fromUrl = k->Url();
+    QPointer<KSvnSimpleOkDialog> dlg(new KSvnSimpleOkDialog(QStringLiteral("relocate_dlg")));
+    dlg->setWindowTitle(i18n("Relocate path %1", path));
+    dlg->setWithCancelButton();
+    CheckoutInfo_impl *ptr(new CheckoutInfo_impl(dlg));
+    ptr->setStartUrl(fromUrl);
+    ptr->disableAppend(true);
+    ptr->disableTargetDir(true);
+    ptr->disableRange(true);
+    ptr->disableOpen(true);
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,7,0)
+    ptr->hideDepth(true);
+    ptr->hideOverwrite(true);
+#else
+    ptr->hideDepth(true);
+    ptr->overwriteAsRecursive();
+    ptr->disableExternals(true);
+#endif
+    dlg->addWidget(ptr);
+    bool done = false;
+    if (dlg->exec() == QDialog::Accepted) {
+        if (!ptr->reposURL().isValid()) {
+            KMessageBox::error(QApplication::activeModalWidget(), i18n("Invalid url given!"),
+                               i18n("Relocate path %1", path));
             delete dlg;
-        }
-        if (!done) {
             return;
         }
+        done = m_Data->m_Model->svnWrapper()->makeRelocate(fromUrl, ptr->reposURL(), path, ptr->overwrite(), ptr->ignoreExternals());
     }
-    refreshItem(k->sItem());
+    delete dlg;
+    if (done) {
+        refreshItem(k->sItem());
+    }
 }
 
 void MainTreeWidget::slotImportDirsIntoCurrent()
@@ -2058,74 +2035,73 @@ void MainTreeWidget::slotImportIntoCurrent(bool dirs)
         KMessageBox::error(this, i18n("Cannot import into multiple targets"));
         return;
     }
-    QString targetUri;
+    QUrl targetDir;
     if (selectionCount() == 0) {
-        targetUri = baseUri();
+        if (isNetworked())
+            targetDir = QUrl(baseUri());
+        else
+            targetDir = QUrl::fromLocalFile(baseUri());
     } else {
-        targetUri = SelectedNode()->Url();
+        targetDir = SelectedNode()->Url();
     }
-    KUrl uri;
+    QString source;
     if (dirs) {
-        uri = KFileDialog::getExistingDirectory(KUrl(), this, i18n("Import files from folder"));
+        source = QFileDialog::getExistingDirectory(this, i18n("Import files from folder"));
     } else {
-        uri = KFileDialog::getImageOpenUrl(KUrl(), this, i18n("Import file"));
+        source = QFileDialog::getOpenFileName(this, i18n("Import file"), QString());
     }
 
-    if (uri.url().isEmpty()) {
-        return;
-    }
-
-    slotImportIntoDir(uri, targetUri, dirs);
+    slotImportIntoDir(source, targetDir, dirs);
 }
 
-void MainTreeWidget::slotImportIntoDir(const KUrl &importUrl, const QString &target, bool dirs)
+void MainTreeWidget::slotImportIntoDir(const QString &source, const QUrl &_targetUri, bool dirs)
 {
-    Commitmsg_impl *ptr = 0;
-    Importdir_logmsg *ptr2 = 0;
-
-    QPointer<KDialog> dlg;
-    KUrl uri = importUrl;
-    if (!uri.protocol().isEmpty() && !uri.isLocalFile()) {
-        KMessageBox::error(this, i18n("Cannot import remote URLs"));
+    QString sourceUri = source;
+    while (sourceUri.endsWith(QLatin1Char('/'))) {
+        sourceUri.chop(1);
+    }
+    if (sourceUri.isEmpty()) {
         return;
     }
-    QString targetUri = target;
-    while (targetUri.endsWith(QLatin1Char('/'))) {
-        targetUri.chop(1);
-    }
 
+    if (_targetUri.isEmpty()) {
+        return;
+    }
+    QUrl targetUri(_targetUri);
+
+    QPointer<KSvnSimpleOkDialog> dlg(new KSvnSimpleOkDialog(QStringLiteral("import_log_msg")));
+    dlg->setWindowTitle(i18n("Import log"));
+    dlg->setWithCancelButton();
+    Commitmsg_impl *ptr = nullptr;
+    Importdir_logmsg *ptr2 = nullptr;
     if (dirs) {
-        dlg = createOkDialog(&ptr2, i18n("Import log"), true, QLatin1String("import_log_msg"));
+        ptr2 = new Importdir_logmsg(dlg);
+        ptr2->createDirboxDir(QLatin1Char('"') + QFileInfo(sourceUri).fileName() + QLatin1Char('"'));
         ptr = ptr2;
-        ptr2->createDirboxDir(QLatin1Char('"') + uri.fileName() + QLatin1Char('"'));
     } else {
-        dlg = createOkDialog(&ptr, i18n("Import log"), true, QLatin1String("import_log_msg"));
+        ptr = new Commitmsg_impl(dlg);
     }
-
     ptr->initHistory();
-    KConfigGroup _k(Kdesvnsettings::self()->config(), "import_log_msg");
+    dlg->addWidget(ptr);
     if (dlg->exec() != QDialog::Accepted) {
         if (dlg) {
-          ptr->saveHistory(true);
-          dlg->saveDialogSize(_k);
-          delete dlg;
+            ptr->saveHistory(true);
+            delete dlg;
         }
         return;
     }
-    dlg->saveDialogSize(_k);
 
     QString logMessage = ptr->getMessage();
     svn::Depth rec = ptr->getDepth();
     ptr->saveHistory(false);
-    uri.setProtocol(QString());
-    QString iurl = uri.path(KUrl::RemoveTrailingSlash);
+
     if (dirs && ptr2 && ptr2->createDir()) {
-        targetUri += QLatin1Char('/') + uri.fileName();
+        targetUri.setPath(targetUri.path() + QLatin1Char('/') + QFileInfo(sourceUri).fileName());
     }
     if (ptr2) {
-        m_Data->m_Model->svnWrapper()->slotImport(iurl, targetUri, logMessage, rec, ptr2->noIgnore(), ptr2->ignoreUnknownNodes());
+        m_Data->m_Model->svnWrapper()->slotImport(sourceUri, targetUri, logMessage, rec, ptr2->noIgnore(), ptr2->ignoreUnknownNodes());
     } else {
-        m_Data->m_Model->svnWrapper()->slotImport(iurl, targetUri, logMessage, rec, false, false);
+        m_Data->m_Model->svnWrapper()->slotImport(sourceUri, targetUri, logMessage, rec, false, false);
     }
     if (!isWorkingCopy()) {
         if (selectionCount() == 0) {
@@ -2148,11 +2124,11 @@ void MainTreeWidget::slotChangeToRepository()
         return;
     }
     svn::InfoEntry i;
-    if (!m_Data->m_Model->svnWrapper()->singleInfo(k->Url(), svn::Revision::UNDEFINED, i)) {
+    if (!m_Data->m_Model->svnWrapper()->singleInfo(k->Url().toString(), svn::Revision::UNDEFINED, i)) {
         return;
     }
     if (i.reposRoot().isEmpty()) {
-        KMessageBox::sorry(KApplication::activeModalWidget(), i18n("Could not retrieve repository of working copy."), i18n("SVN Error"));
+        KMessageBox::sorry(QApplication::activeModalWidget(), i18n("Could not retrieve repository of working copy."), i18n("SVN Error"));
     } else {
         sigSwitchUrl(i.reposRoot());
     }
@@ -2226,7 +2202,7 @@ void MainTreeWidget::slotItemExpanded(const QModelIndex &)
 
 void MainTreeWidget::slotItemsInserted(const QModelIndex &)
 {
-    resizeAllColumns();
+    m_Data->m_resizeColumnsTimer.start(50);
 }
 
 void MainTreeWidget::slotDirSelectionChanged(const QItemSelection &_item, const QItemSelection &)
@@ -2282,16 +2258,16 @@ void MainTreeWidget::slotDirCommit()
 void MainTreeWidget::slotDirUpdate()
 {
     const SvnItemList which = DirSelectionList();
-    QStringList what;
+    svn::Paths what;
     if (which.isEmpty()) {
-        what.append(baseUri());
+        what.append(svn::Path(baseUri()));
     } else {
         what.reserve(which.size());
         Q_FOREACH(const SvnItem *item, which) {
-            what.append(item->fullName());
+            what.append(svn::Path(item->fullName()));
         }
     }
-    m_Data->m_Model->svnWrapper()->makeUpdate(what, svn::Revision::HEAD, svn::DepthUnknown);
+    m_Data->m_Model->svnWrapper()->makeUpdate(svn::Targets(what), svn::Revision::HEAD, svn::DepthUnknown);
 }
 
 void MainTreeWidget::slotRescanIcons()
@@ -2336,9 +2312,9 @@ void MainTreeWidget::slotRepositorySettings()
         return;
     }
     if (inf.reposRoot().isEmpty()) {
-        KMessageBox::sorry(KApplication::activeModalWidget(), i18n("Could not retrieve repository."), i18n("SVN Error"));
+        KMessageBox::sorry(QApplication::activeModalWidget(), i18n("Could not retrieve repository."), i18n("SVN Error"));
     } else {
-        DbSettings::showSettings(inf.reposRoot());
+        DbSettings::showSettings(inf.reposRoot().toString(), this);
     }
 }
 
@@ -2366,11 +2342,5 @@ void MainTreeWidget::slotDirRecProperty()
     if (!k) {
         return;
     }
-    SetPropertyWidget *ptr = 0;
-    QPointer<KDialog> dlg = createOkDialog(&ptr, i18n("Set/add property recursive"), true, QLatin1String("property_dlg"));
-
-    KConfigGroup _k(Kdesvnsettings::self()->config(), "property_dlg");
-    DialogStack _s(dlg, _k);
-    dlg->exec();
-    delete dlg;
+    KMessageBox::information(this, i18n("Not yet implemented"), i18n("Edit property recursively"));
 }

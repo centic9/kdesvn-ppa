@@ -20,8 +20,8 @@
 
 #include "itemdisplay.h"
 #include "svnitem.h"
-#include "src/settings/kdesvnsettings.h"
-#include "src/svnqt/status.h"
+#include "settings/kdesvnsettings.h"
+#include "svnqt/status.h"
 
 ItemDisplay::ItemDisplay()
     : m_isWorkingCopy(false), m_isNetworked(false)
@@ -36,6 +36,11 @@ bool ItemDisplay::isWorkingCopy()const
 QString ItemDisplay::baseUri()const
 {
     return m_baseUri;
+}
+
+QUrl ItemDisplay::baseUriAsUrl()const
+{
+    return m_isWorkingCopy ? QUrl::fromLocalFile(m_baseUri) : QUrl(m_baseUri);
 }
 
 /*!
@@ -89,7 +94,7 @@ bool ItemDisplay::filterOut(const SvnItem *item)
 /*!
     \fn ItemDisplay::relativePath(const SvnItem*item)
  */
-QString ItemDisplay::relativePath(const SvnItem *item)
+QString ItemDisplay::relativePath(const SvnItem *item) const
 {
     if (!isWorkingCopy() || !item->fullName().startsWith(baseUri())) {
         return item->fullName();

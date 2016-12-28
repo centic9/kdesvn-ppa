@@ -20,66 +20,50 @@
 #include "commandline.h"
 #include "kdesvn_part.h"
 #include "commandline_part.h"
-#include <kcmdlineargs.h>
-#include <klocale.h>
-#include <qstring.h>
-#include <ktoolinvocation.h>
-#include <klibloader.h>
+#include <KPluginFactory>
+#include <KPluginLoader>
+#include <KHelpClient>
+#include <QCommandLineParser>
 
-class CommandLineData
-{
-public:
-    CommandLineData(): cmd() {}
-    virtual ~CommandLineData() {}
-
-    void displayHelp();
-
-    QString cmd;
-};
-
-CommandLine::CommandLine(KCmdLineArgs *_args)
-{
-    m_args = _args;
-    m_data = new CommandLineData;
-}
+CommandLine::CommandLine(const QCommandLineParser *parser)
+    : m_parser(parser)
+{}
 
 CommandLine::~CommandLine()
-{
-}
+{}
 
 int CommandLine::exec()
 {
-    if (!m_args || m_args->count() < 1) {
+    if (m_parser->positionalArguments().isEmpty()) {
         return -1;
     }
-    if (m_args->count() < 2) {
-        m_data->cmd = "help";
+    if (m_parser->positionalArguments().count() < 2) {
+        cmd = QLatin1String("help");
     } else {
-        m_data->cmd = m_args->arg(1);
+        cmd = m_parser->positionalArguments().at(1);
     }
-    if (m_data->cmd == "help") {
-        m_data->displayHelp();
+    if (cmd == QLatin1String("help")) {
+        displayHelp();
         return 0;
     }
-    KLibFactory *factory = 0;
 #ifdef EXTRA_KDE_LIBPATH
-    factory = KLibLoader::self()->factory(EXTRA_KDE_LIBPATH + QString("/kdesvnpart.so"));
-    if (!factory)
+    QCoreApplication::addLibraryPath(QString::fromLocal8Bit(EXTRA_KDE_LIBPATH));
 #endif
-        factory = KLibLoader::self()->factory("kdesvnpart");
+    KPluginLoader loader("kdesvnpart");
+    KPluginFactory *factory = loader.factory();
     if (factory) {
-        QObject *_p = (factory->create<QObject>("commandline_part", this));
-        if (!_p || QString(_p->metaObject()->className()).compare("commandline_part") != 0) {
+        QObject *_p = (factory->create<QObject>("commandline_part", nullptr));
+        if (!_p || QString::fromLatin1(_p->metaObject()->className()) != QLatin1String("commandline_part")) {
             return 0;
         }
         commandline_part *cpart = static_cast<commandline_part *>(_p);
-        int res = cpart->exec(m_args);
+        int res = cpart->exec(m_parser);
         return res;
     }
     return 0;
 }
 
-void CommandLineData::displayHelp()
+void CommandLine::displayHelp()
 {
-    KToolInvocation::invokeHelp("kdesvn-commandline", "kdesvn");
+    KHelpClient::invokeHelp(QLatin1String("kdesvn-commandline"), QLatin1String("kdesvn"));
 }

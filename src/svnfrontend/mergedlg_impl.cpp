@@ -19,18 +19,14 @@
  ***************************************************************************/
 #include "mergedlg_impl.h"
 #include "rangeinput_impl.h"
-#include "src/svnqt/url.h"
+#include <svnqt/url.h>
+#include <svnqt/version_check.h>
 #include "helpers/ktranslateurl.h"
-#include "src/settings/kdesvnsettings.h"
+#include "ksvnwidgets/ksvndialog.h"
+#include "settings/kdesvnsettings.h"
 
-#include <kurlrequester.h>
-#include <kdialog.h>
-#include <klocale.h>
-#include <kdebug.h>
-#include <kvbox.h>
+#include <KLocalizedString>
 
-#include <qlabel.h>
-#include <qcheckbox.h>
 
 MergeDlg_impl::MergeDlg_impl(QWidget *parent, bool src1, bool src2, bool out, bool record_only, bool reintegrate)
     : QWidget(parent), Ui::MergeDlg()
@@ -62,6 +58,10 @@ MergeDlg_impl::MergeDlg_impl(QWidget *parent, bool src1, bool src2, bool out, bo
         m_Reintegrate->setEnabled(false);
         m_Reintegrate->hide();
     }
+    if (svn::Version::version_major() == 1 && svn::Version::version_minor() < 7) {
+        m_AllowMixedRev->setEnabled(false);
+        m_AllowMixedRev->hide();
+    }
     adjustSize();
     setMinimumSize(minimumSizeHint());
     m_useExternMerge->setChecked(Kdesvnsettings::extern_merge_default());
@@ -77,8 +77,7 @@ void MergeDlg_impl::setSrc1(const QString &what)
         m_SrcOneInput->clear();
         return;
     }
-    KUrl uri(helpers::KTranslateUrl::string2Uri(what));
-    m_SrcOneInput->setUrl(uri);
+    m_SrcOneInput->setUrl(helpers::KTranslateUrl::string2Uri(what));
 }
 
 void MergeDlg_impl::setSrc2(const QString &what)
@@ -87,8 +86,7 @@ void MergeDlg_impl::setSrc2(const QString &what)
         m_SrcTwoInput->clear();
         return;
     }
-    KUrl uri(helpers::KTranslateUrl::string2Uri(what));
-    m_SrcTwoInput->setUrl(uri);
+    m_SrcTwoInput->setUrl(helpers::KTranslateUrl::string2Uri(what));
 }
 
 void MergeDlg_impl::setDest(const QString &what)
@@ -97,9 +95,8 @@ void MergeDlg_impl::setDest(const QString &what)
         m_OutInput->clear();
         return;
     }
-    KUrl uri(what);
-    uri.setProtocol(QString());
-    m_OutInput->setUrl(uri);
+    // only local destination
+    m_OutInput->setUrl(QUrl::fromLocalFile(what));
 }
 
 bool MergeDlg_impl::recursive()const
@@ -137,15 +134,20 @@ bool MergeDlg_impl::reintegrate()const
     return m_Reintegrate->isChecked();
 }
 
+bool MergeDlg_impl::allowmixedrevs()const
+{
+    return m_AllowMixedRev->isChecked();
+}
+
 QString MergeDlg_impl::Src1()const
 {
-    KUrl uri(m_SrcOneInput->url());
-    QString proto = svn::Url::transformProtokoll(uri.protocol());
-    if (proto == "file" && !m_SrcOneInput->url().prettyUrl().startsWith("ksvn+file:")) {
-        uri.setProtocol(QString());
-    } else {
-        uri.setProtocol(proto);
+    QUrl uri(m_SrcOneInput->url());
+    const QString proto = svn::Url::transformProtokoll(uri.scheme());
+    if (proto == QLatin1String("file") && !m_SrcOneInput->url().scheme().startsWith("ksvn+file:")) {
+        return uri.toLocalFile();
     }
+
+    uri.setScheme(proto);
     return uri.url();
 }
 
@@ -154,21 +156,19 @@ QString MergeDlg_impl::Src2()const
     if (m_SrcTwoInput->url().isEmpty()) {
         return QString();
     }
-    KUrl uri(m_SrcTwoInput->url());
-    QString proto = svn::Url::transformProtokoll(uri.protocol());
-    if (proto == "file" && !m_SrcTwoInput->url().prettyUrl().startsWith("ksvn+file:")) {
-        uri.setProtocol(QString());
-    } else {
-        uri.setProtocol(proto);
+    QUrl uri(m_SrcTwoInput->url());
+    const QString proto = svn::Url::transformProtokoll(uri.scheme());
+    if (proto == QLatin1String("file") && !m_SrcTwoInput->url().scheme().startsWith("ksvn+file:")) {
+        return uri.toLocalFile();
     }
+
+    uri.setScheme(proto);
     return uri.url();
 }
 
 QString MergeDlg_impl::Dest()const
 {
-    KUrl uri(m_OutInput->url());
-    uri.setProtocol(QString());
-    return uri.url();
+    return m_OutInput->url().toLocalFile();
 }
 
 Rangeinput_impl::revision_range MergeDlg_impl::getRange()const
@@ -176,26 +176,21 @@ Rangeinput_impl::revision_range MergeDlg_impl::getRange()const
     return m_RangeInput->getRange();
 }
 
+
 /*!
     \fn MergeDlg_impl::getMergeRange(bool*force,bool*recursive,bool*related,bool*dry)
  */
 bool MergeDlg_impl::getMergeRange(Rangeinput_impl::revision_range &range, bool *force, bool *recursive, bool *ignorerelated, bool *dry,
-                                  bool *useExternal,
+                                  bool *useExternal, bool *allowmixedrevs,
                                   QWidget *parent)
 {
-    QPointer<KDialog> dlg(new KDialog(parent));
-    dlg->setButtons(KDialog::Ok | KDialog::Cancel | KDialog::Help);
-    dlg->setCaption(i18n("Enter merge range"));
-    dlg->setDefaultButton(KDialog::Ok);
-    dlg->setHelp("merging-items", "kdesvn");
-    KVBox *Dialog1Layout = new KVBox(dlg);
-    dlg->setMainWidget(Dialog1Layout);
+    QPointer<KSvnSimpleOkDialog> dlg(new KSvnSimpleOkDialog(QStringLiteral("merge_range"), parent));
+    dlg->setWithCancelButton();
+    dlg->setHelp(QLatin1String("merging-items"));
+    dlg->setWindowTitle(i18n("Enter merge range"));
 
-    MergeDlg_impl *ptr = new MergeDlg_impl(Dialog1Layout, false, false, false, false, false);
-    dlg->resize(QSize(480, 360).expandedTo(dlg->minimumSizeHint()));
-    KConfigGroup _kc(Kdesvnsettings::self()->config(), "merge_range");
-    dlg->restoreDialogSize(_kc);
-
+    MergeDlg_impl *ptr = new MergeDlg_impl(dlg, false, false, false, false, false);
+    dlg->addWidget(ptr);
     bool ret = false;
     if (dlg->exec() == QDialog::Accepted) {
         range = ptr->getRange();
@@ -204,13 +199,10 @@ bool MergeDlg_impl::getMergeRange(Rangeinput_impl::revision_range &range, bool *
         *ignorerelated = ptr->ignorerelated();
         *dry = ptr->dryrun();
         *useExternal = ptr->useExtern();
+        *allowmixedrevs = ptr->allowmixedrevs();
         ret = true;
     }
-    if (dlg) {
-        dlg->saveDialogSize(_kc);
-        _kc.sync();
-        delete dlg;
-    }
+    delete dlg;
 
     return ret;
 }

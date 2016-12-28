@@ -22,83 +22,64 @@
  * history and logs, available at http://kdesvn.alwins-world.de.           *
  ***************************************************************************/
 #include "dbsettings.h"
-#include "src/svnqt/cache/ReposConfig.h"
-#include "src/svnfrontend/fronthelpers/createdlg.h"
+#include "ui_dbsettings.h"
+
+#include "svnqt/cache/ReposConfig.h"
 #include <QPointer>
 
-class DbSettingsData
+DbSettings::DbSettings(const QString &repository, QWidget *parent)
+    : KSvnDialog(QLatin1String("db_settings_dlg"), parent)
+    , m_repository(repository)
+    , m_ui(new Ui::DbSettings)
 {
-public:
-    DbSettingsData() {}
-    ~DbSettingsData() {}
-
-    QString m_repository;
-};
-
-DbSettings::DbSettings(QWidget *parent)
-    : QWidget(parent)
-{
-    setupUi(this);
-    _data = new DbSettingsData;
+    m_ui->setupUi(this);
+    setDefaultButton(m_ui->buttonBox->button(QDialogButtonBox::Ok));
+    connect(m_ui->buttonBox, SIGNAL(accepted()), this, SLOT(accept()));
+    connect(m_ui->buttonBox, SIGNAL(rejected()), this, SLOT(reject()));
+    setWindowTitle(i18n("Settings for %1", repository));
+    init();
 }
 
 DbSettings::~DbSettings()
 {
-    delete _data;
-}
-
-void DbSettings::setRepository(const QString &repository)
-{
-    _data->m_repository = repository;
-    dbcfg_exclude_box->clear();
-    init();
+    delete m_ui;
 }
 
 void DbSettings::init()
 {
-    dbcfg_exclude_box->setItems(svn::cache::ReposConfig::self()->readEntry(_data->m_repository, "tree_exclude_list", QStringList()));
-    dbcfg_noCacheUpdate->setChecked(svn::cache::ReposConfig::self()->readEntry(_data->m_repository, "no_update_cache", false));
-    dbcfg_filter_empty_author->setChecked(svn::cache::ReposConfig::self()->readEntry(_data->m_repository, "filter_empty_author", false));
-    dbcfg_exclude_log_pattern->setItems(svn::cache::ReposConfig::self()->readEntry(_data->m_repository, "exclude_log_pattern", QStringList()));
-    dbcfg_exclude_userslog->setItems(svn::cache::ReposConfig::self()->readEntry(_data->m_repository, "exclude_log_users", QStringList()));
+    m_ui->dbcfg_exclude_box->setItems(svn::cache::ReposConfig::self()->readEntry(m_repository, "tree_exclude_list", QStringList()));
+    m_ui->dbcfg_exclude_userslog->setItems(svn::cache::ReposConfig::self()->readEntry(m_repository, "exclude_log_users", QStringList()));
+    m_ui->dbcfg_exclude_log_pattern->setItems(svn::cache::ReposConfig::self()->readEntry(m_repository, "exclude_log_pattern", QStringList()));
+    m_ui->dbcfg_noCacheUpdate->setChecked(svn::cache::ReposConfig::self()->readEntry(m_repository, "no_update_cache", false));
+    m_ui->dbcfg_filter_empty_author->setChecked(svn::cache::ReposConfig::self()->readEntry(m_repository, "filter_empty_author", false));
 }
 
-void DbSettings::store_list(KEditListBox *which, const QString &key)
+void DbSettings::store_list(KEditListWidget *which, const QString &key)
 {
     if (!which || key.isEmpty()) {
         return;
     }
-    QStringList _v = which->items();
-    if (_v.count() > 0) {
-        svn::cache::ReposConfig::self()->setValue(_data->m_repository, key, _v);
+    const QStringList _v = which->items();
+    if (!_v.isEmpty()) {
+        svn::cache::ReposConfig::self()->setValue(m_repository, key, _v);
     } else {
-        svn::cache::ReposConfig::self()->eraseValue(_data->m_repository, key);
+        svn::cache::ReposConfig::self()->eraseValue(m_repository, key);
     }
 }
 
-void DbSettings::store()
+void DbSettings::accept()
 {
-    store_list(dbcfg_exclude_box, "tree_exclude_list");
-    store_list(dbcfg_exclude_userslog, "exclude_log_users");
-    store_list(dbcfg_exclude_log_pattern, "exclude_log_pattern");
-    svn::cache::ReposConfig::self()->setValue(_data->m_repository, "no_update_cache", dbcfg_noCacheUpdate->isChecked());
-    svn::cache::ReposConfig::self()->setValue(_data->m_repository, "filter_empty_author", dbcfg_filter_empty_author->isChecked());
+    store_list(m_ui->dbcfg_exclude_box, "tree_exclude_list");
+    store_list(m_ui->dbcfg_exclude_userslog, "exclude_log_users");
+    store_list(m_ui->dbcfg_exclude_log_pattern, "exclude_log_pattern");
+    svn::cache::ReposConfig::self()->setValue(m_repository, "no_update_cache", m_ui->dbcfg_noCacheUpdate->isChecked());
+    svn::cache::ReposConfig::self()->setValue(m_repository, "filter_empty_author", m_ui->dbcfg_filter_empty_author->isChecked());
+    KSvnDialog::accept();
 }
 
-void DbSettings::showSettings(const QString &repository)
+void DbSettings::showSettings(const QString &repository, QWidget *parent)
 {
-    DbSettings *ptr = 0;
-    static const char cfg_text[] = "db_settings_dlg";
-    KConfigGroup _kc(Kdesvnsettings::self()->config(), QLatin1String(cfg_text));
-    QPointer<KDialog> dlg(createOkDialog(&ptr, i18n("Settings for %1", repository), true, QLatin1String(cfg_text)));
-    dlg->restoreDialogSize(_kc);
-    ptr->setRepository(repository);
-    if (dlg->exec() == QDialog::Accepted) {
-        ptr->store();
-    }
-    if (dlg) {
-        dlg->saveDialogSize(_kc);
-        _kc.sync();
-        delete dlg;
-    }
+    QPointer<DbSettings> dlg(new DbSettings(repository, parent ? parent : QApplication::activeModalWidget()));
+    dlg->exec();
+    delete dlg;
 }

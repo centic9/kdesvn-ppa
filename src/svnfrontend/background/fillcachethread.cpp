@@ -20,11 +20,11 @@
 #include "fillcachethread.h"
 #include "tcontextlistener.h"
 
-#include "src/svnqt/cache/ReposLog.h"
-#include "src/svnqt/cache/ReposConfig.h"
-#include "src/svnqt/url.h"
+#include "svnqt/cache/ReposLog.h"
+#include "svnqt/cache/ReposConfig.h"
+#include "svnqt/url.h"
 
-#include <KLocale>
+#include <KLocalizedString>
 
 // FillCacheThread
 FillCacheThread::FillCacheThread(QObject *_parent, const QString &aPath, bool startup)
@@ -51,7 +51,7 @@ void FillCacheThread::fillInfo()
     svn::InfoEntry e;
     itemInfo(Path(), e);
     if (!e.reposRoot().isEmpty()) {
-        m_what = e.reposRoot();
+        m_what = e.reposRoot().toString();
     }
 }
 

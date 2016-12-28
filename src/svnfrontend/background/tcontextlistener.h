@@ -20,9 +20,9 @@
 #ifndef TCONTEXTLISTENER_H
 #define TCONTEXTLISTENER_H
 
-#include "ccontextlistener.h"
+#include "svnfrontend/ccontextlistener.h"
 
-class ThreadContextListenerData;
+struct ThreadContextListenerData;
 
 /**
   @author Rajko Albrecht

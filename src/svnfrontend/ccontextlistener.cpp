@@ -18,20 +18,18 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.         *
  ***************************************************************************/
 #include "ccontextlistener.h"
-#include "src/settings/kdesvnsettings.h"
-#include "src/ksvnwidgets/authdialogimpl.h"
-#include "src/ksvnwidgets/commitmsg_impl.h"
-#include "src/ksvnwidgets/ssltrustprompt_impl.h"
-#include "src/ksvnwidgets/pwstorage.h"
+#include "settings/kdesvnsettings.h"
+#include "ksvnwidgets/authdialogimpl.h"
+#include "ksvnwidgets/commitmsg_impl.h"
+#include "ksvnwidgets/ssltrustprompt.h"
+#include "ksvnwidgets/pwstorage.h"
+#include "helpers/kdesvn_debug.h"
 
-#include <klocale.h>
-#include <kapplication.h>
-#include <kinputdialog.h>
-#include <kpassworddialog.h>
-#include <kdebug.h>
-#include <kfiledialog.h>
-#include <kmessagebox.h>
+#include <KLocalizedString>
+#include <KMessageBox>
+#include <KPasswordDialog>
 
+#include <QFileDialog>
 #include <QTextStream>
 #include <QMutex>
 
@@ -263,7 +261,7 @@ svn::ContextListener::SslServerTrustAnswer CContextListener::contextSslServerTru
 {
     bool ok, saveit;
     emit waitShow(true);
-    if (!SslTrustPrompt_impl::sslTrust(
+    if (!SslTrustPrompt::sslTrust(
                 data.hostname,
                 data.fingerprint,
                 data.validFrom,
@@ -283,16 +281,9 @@ svn::ContextListener::SslServerTrustAnswer CContextListener::contextSslServerTru
 
 bool CContextListener::contextSslClientCertPrompt(QString &certFile)
 {
-    kDebug(9510) << certFile << endl;
+    qCDebug(KDESVN_LOG) << certFile << endl;
     emit waitShow(true);
-//     QString afile = KFileDialog::getOpenFileName(QString(),
-//         QString(),
-//         0,
-//         i18n("Open a file with a #PKCS12 certificate"));
-    QString afile = KFileDialog::getOpenFileName(KUrl(),
-                    QString(),
-                    0,
-                    i18n("Open a file with a #PKCS12 certificate"));
+    QString afile = QFileDialog::getOpenFileName(nullptr, i18n("Open a file with a #PKCS12 certificate"));
     emit waitShow(false);
     if (afile.isEmpty()) {
         return false;

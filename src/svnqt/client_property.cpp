@@ -34,6 +34,7 @@
 
 // subversion api
 #include <svn_client.h>
+#include <svn_path.h>
 
 #include "path.h"
 #include "exception.h"
@@ -43,13 +44,20 @@
 #include "client_parameter.h"
 #include "helper.h"
 #include <QCoreApplication>
+#include <QDir>
+
 
 namespace svn
 {
 
+struct ProplistBaton {
+    ContextWP m_context;
+    PathPropertiesMapListPtr resultlist;
+};
+
 static svn_error_t *ProplistReceiver(void *baton, const char *path, apr_hash_t *prop_hash, apr_pool_t *pool)
 {
-    Client_impl::propBaton *_baton = static_cast<Client_impl::propBaton *>(baton);
+    ProplistBaton *_baton = static_cast<ProplistBaton *>(baton);
     PathPropertiesMapListPtr mapList = _baton->resultlist;
 
     ContextP l_context = _baton->m_context;
@@ -76,10 +84,10 @@ Client_impl::proplist(const Path &path,
 
     PathPropertiesMapListPtr path_prop_map_list = PathPropertiesMapListPtr(new PathPropertiesMapList);
 
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 5)) || (SVN_VER_MAJOR > 1)
-    propBaton baton;
+    ProplistBaton baton;
     baton.m_context = m_context;
     baton.resultlist = path_prop_map_list;
+    // todo svn 1.8: svn_client_proplist4
     svn_error_t *error =
         svn_client_proplist3(
             path.cstr(),
@@ -91,46 +99,10 @@ Client_impl::proplist(const Path &path,
             &baton,
             *m_context,
             pool);
-#else
-    Q_UNUSED(changelists);
-    Q_UNUSED(ProplistReceiver);
-    bool recurse = depth == DepthInfinity;
-    apr_array_header_t *props;
-    svn_error_t *error =
-        svn_client_proplist2(&props,
-                             path.cstr(),
-                             peg.revision(),
-                             revision.revision(),
-                             recurse,
-                             *m_context,
-                             pool);
-
-#endif
     if (error != NULL) {
         throw ClientException(error);
     }
 
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR < 5))
-    for (int j = 0; j < props->nelts; ++j) {
-        svn_client_proplist_item_t *item =
-            ((svn_client_proplist_item_t **)props->elts)[j];
-
-        PropertiesMap prop_map;
-
-        apr_hash_index_t *hi;
-        for (hi = apr_hash_first(pool, item->prop_hash); hi;
-                hi = apr_hash_next(hi)) {
-            const void *key;
-            void *val;
-
-            apr_hash_this(hi, &key, NULL, &val);
-            prop_map[ QString::fromUtf8((const char *)key) ] =
-                QString::fromUtf8(((const svn_string_t *)val)->data);
-        }
-
-        path_prop_map_list->push_back(PathPropertiesMapEntry(QString::fromUtf8(item->node_name->data), prop_map));
-    }
-#endif
     return path_prop_map_list;
 }
 
@@ -147,8 +119,12 @@ Client_impl::propget(const QString &propName,
 
     apr_hash_t *props;
     svn_revnum_t actual = svn_revnum_t(-1);
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 5)) || (SVN_VER_MAJOR > 1)
+    // todo svn 1.8: svn_client_propget5
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,7,0)
+    svn_error_t *error = svn_client_propget4(&props,
+#else
     svn_error_t *error = svn_client_propget3(&props,
+#endif
                                              propName.toUtf8(),
                                              path.cstr(),
                                              peg.revision(),
@@ -157,21 +133,11 @@ Client_impl::propget(const QString &propName,
                                              internal::DepthToSvn(depth),
                                              changelists.array(pool),
                                              *m_context,
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,7,0)
+                                             pool,
+#endif
                                              pool
                                             );
-#else
-    bool recurse = depth == DepthInfinity;
-    Q_UNUSED(changelists);
-    svn_error_t *error =
-        svn_client_propget2(&props,
-                            propName.toUtf8(),
-                            path.cstr(),
-                            peg.revision(),
-                            revision.revision(),
-                            recurse,
-                            *m_context,
-                            pool);
-#endif
 
     if (error != NULL) {
         throw ClientException(error);
@@ -189,7 +155,15 @@ Client_impl::propget(const QString &propName,
 
         apr_hash_this(hi, &key, NULL, &val);
         prop_map[propName] = QString::fromUtf8(((const svn_string_t *)val)->data);
-        path_prop_map_list.push_back(PathPropertiesMapEntry(QString::fromUtf8((const char *)key), prop_map));
+        QString filename = QString::fromUtf8((const char *)key);
+#if SVN_API_VERSION < SVN_VERSION_CHECK(1,7,0)
+        // svn_client_propget3 returns relative paths if a relative path was given
+        // we always want to return an absolute path
+        if (!svn_path_is_url(path.cstr()) && !QDir(path).isAbsolute()) {
+            filename = path.path() + QLatin1Char('/') + filename;
+        }
+#endif
+        path_prop_map_list.push_back(PathPropertiesMapEntry(filename, prop_map));
     }
 
     return QPair<qlonglong, PathPropertiesMapList>(actual, path_prop_map_list);
@@ -208,9 +182,37 @@ Client_impl::propset(const PropertiesParameter &params)
     }
 
     svn_error_t *error = 0;
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 5)) || (SVN_VER_MAJOR > 1)
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,6,0)
+    const QByteArray tgtTmp = params.path().cstr();
+    if (svn_path_is_url(tgtTmp)) {
+        error = svn_client_propset_remote(params.propertyName().toUtf8(),
+                                          propval,
+                                          tgtTmp,
+                                          params.skipCheck(),
+                                          params.revision(),
+                                          map2hash(params.revisionProperties(), pool),
+                                          NULL, // we don't need a commit info - ignore
+                                          NULL,
+                                          *m_context,
+                                          pool
+                                          );
+    } else {
+        apr_array_header_t *targets = apr_array_make(pool, 1,
+                                                     sizeof(const char *));
+        APR_ARRAY_PUSH(targets, const char *) = tgtTmp;
+        error = svn_client_propset_local(params.propertyName().toUtf8(),
+                                         propval,
+                                         targets,
+                                         internal::DepthToSvn(params.depth()),
+                                         params.skipCheck(),
+                                         params.changeList().array(pool),
+                                         *m_context,
+                                         pool);
+
+    }
+#else
     svn_commit_info_t *commit_info;
-    svn_client_propset3(
+    error = svn_client_propset3(
         &commit_info,
         params.propertyName().toUtf8(),
         propval, params.path().cstr(),
@@ -219,12 +221,6 @@ Client_impl::propset(const PropertiesParameter &params)
         params.changeList().array(pool),
         map2hash(params.revisionProperties(), pool),
         *m_context, pool);
-#else
-    bool recurse = params.depth() == DepthInfinity;
-    svn_client_propset2(
-        params.propertyName().toUtf8(),
-        propval, params.path().cstr(),
-        recurse, params.skipCheck(), *m_context, pool);
 #endif
     if (error != NULL) {
         throw ClientException(error);
@@ -329,7 +325,7 @@ Client_impl::revpropset(const PropertiesParameter &param)
 
     svn_revnum_t revnum;
 
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 6)) || (SVN_VER_MAJOR > 1)
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,6,0)
     const svn_string_t *oldpropval = param.propertyOriginalValue().isNull() ? 0 : svn_string_create(param.propertyOriginalValue().toUtf8(), pool);
     svn_error_t *error = svn_client_revprop_set2(
                              param.propertyName().toUtf8(),
@@ -368,7 +364,7 @@ Client_impl::revpropdel(const QString &propName,
 
     svn_revnum_t revnum;
     svn_error_t *error =
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 6)) || (SVN_VER_MAJOR > 1)
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,6,0)
         svn_client_revprop_set2(
             propName.toUtf8(),
             0, // value = NULL

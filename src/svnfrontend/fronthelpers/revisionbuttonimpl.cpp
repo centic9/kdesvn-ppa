@@ -18,17 +18,11 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.         *
  ***************************************************************************/
 #include "revisionbuttonimpl.h"
-#include "src/svnfrontend/fronthelpers/rangeinput_impl.h"
-#include "src/settings/kdesvnsettings.h"
+#include "svnfrontend/fronthelpers/rangeinput_impl.h"
+#include "settings/kdesvnsettings.h"
+#include "ksvnwidgets/ksvndialog.h"
 
-#include <kpushbutton.h>
-#include <kdialog.h>
-#include <kfiledialog.h>
-#include <kapplication.h>
-#include <klocale.h>
-
-#include <KVBox>
-#include <QPointer>
+#include <KLocalizedString>
 
 RevisionButtonImpl::RevisionButtonImpl(QWidget *parent)
     : QWidget(parent),
@@ -50,27 +44,9 @@ void RevisionButtonImpl::setRevision(const svn::Revision &aRev)
 
 void RevisionButtonImpl::askRevision()
 {
-    Rangeinput_impl *rdlg;
-    QPointer<KDialog> dlg(new KDialog());
-    dlg->setCaption(i18n("Select revision"));
-    dlg->setButtons(KDialog::Ok | KDialog::Cancel);
-    dlg->showButtonSeparator(false);
-
-    KVBox *Dialog1Layout = new KVBox(dlg);
-    dlg->setMainWidget(Dialog1Layout);
-
-    rdlg = new Rangeinput_impl(Dialog1Layout);
-    rdlg->setStartOnly(true);
-    rdlg->setNoWorking(m_noWorking);
-
-    KConfigGroup _k(Kdesvnsettings::self()->config(), "log_revisions_dlg");
-    dlg->restoreDialogSize(_k);
-    if (dlg->exec() == QDialog::Accepted) {
-        setRevision(rdlg->getRange().first);
-    }
-    if (dlg) {
-        dlg->saveDialogSize(_k);
-        delete dlg;
+    Rangeinput_impl::revision_range range;
+    if (Rangeinput_impl::getRevisionRange(range, !m_noWorking, true)) {
+        setRevision(range.first);
     }
 }
 

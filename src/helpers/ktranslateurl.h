@@ -20,7 +20,8 @@
 #ifndef HELPERSKTRANSLATEURL_H
 #define HELPERSKTRANSLATEURL_H
 
-#include <kurl.h>
+#include <QString>
+#include <QUrl>
 
 namespace helpers
 {
@@ -30,9 +31,8 @@ namespace helpers
 */
 namespace KTranslateUrl
 {
-KUrl translateSystemUrl(const KUrl &_url);
 QString makeKdeUrl(const QString &inUrl);
-KUrl string2Uri(const QString &what);
+QUrl string2Uri(const QString &what);
 }
 
 }

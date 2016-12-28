@@ -20,17 +20,15 @@
 #ifndef PWSTORAGE_H
 #define PWSTORAGE_H
 
-#include <qstring.h>
-#include <qobject.h>
+#include <QString>
 
 class PwStorageData;
 
 /**
     Access to wallet isn't threadsafe 'cause wallet has not to be called from within threads!
  */
-class PwStorage: public QObject
+class PwStorage
 {
-    Q_OBJECT
 protected:
     PwStorageData *mData;
 public:
@@ -46,7 +44,7 @@ public:
 
 protected:
     PwStorage();
-    virtual ~PwStorage();
+    ~PwStorage();
 };
 
 #endif

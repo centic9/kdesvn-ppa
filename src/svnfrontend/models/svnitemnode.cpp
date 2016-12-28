@@ -19,11 +19,9 @@
  ***************************************************************************/
 
 #include "svnitemnode.h"
-#include "src/svnfrontend/maintreewidget.h"
-#include "src/svnqt/revision.h"
-#include "src/settings/kdesvnsettings.h"
-
-#include <kdebug.h>
+#include "svnfrontend/maintreewidget.h"
+#include "svnqt/revision.h"
+#include "settings/kdesvnsettings.h"
 
 SvnItemModelNode::SvnItemModelNode(SvnItemModelNodeDir *aParentNode, SvnActions *bl, MainTreeWidget *id)
     : SvnItem(), _parentNode(aParentNode), _actions(bl), _display(id)
@@ -148,7 +146,7 @@ void SvnItemModelNodeDir::clear()
     m_Children.clear();
 }
 
-const QList<SvnItemModelNode *> &SvnItemModelNodeDir::childList()const
+const QVector<SvnItemModelNode *> &SvnItemModelNodeDir::childList()const
 {
     return m_Children;
 }
@@ -163,10 +161,7 @@ bool SvnItemModelNodeDir::NodeIsDir() const
 
 SvnItemModelNode *SvnItemModelNodeDir::child(int row)const
 {
-    if (row < 0) {
-        return 0;
-    }
-    if (row >= m_Children.size()) {
+    if (row < 0 || row >= m_Children.size()) {
         return 0;
     }
     return m_Children[row];

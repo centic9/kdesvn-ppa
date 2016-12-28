@@ -20,21 +20,20 @@
 #ifndef KIOBYTESTREAM_H
 #define KIOBYTESTREAM_H
 
-#include "src/svnqt/svnstream.h"
+#include "svnqt/svnstream.h"
 
 #include <kio/global.h>
-#include <kmimetype.h>
-#include <qbuffer.h>
-#include <qdatetime.h>
+#include <QMimeType>
+#include <QElapsedTimer>
 
 class StreamWrittenCb
 {
 public:
-    StreamWrittenCb() {}
-    virtual ~StreamWrittenCb() {}
+    StreamWrittenCb() = default;
+    virtual ~StreamWrittenCb() = default;
     virtual void streamWritten(const KIO::filesize_t current) = 0;
-    virtual void streamPushData(QByteArray) = 0;
-    virtual void streamSendMime(KMimeType::Ptr) = 0;
+    virtual void streamPushData(const QByteArray &streamData) = 0;
+    virtual void streamSendMime(const QMimeType &mt) = 0;
 };
 
 /**
@@ -61,7 +60,7 @@ protected:
     bool m_mimeSend;
     QString m_Filename;
     QByteArray array;
-    QTime m_MessageTick;
+    QElapsedTimer m_MessageTick;
 };
 
 #endif

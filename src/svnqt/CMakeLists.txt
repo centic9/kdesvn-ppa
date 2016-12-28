@@ -18,6 +18,11 @@
  #   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.         #
  ####
 
+option(OVERRIDE_SVN_API_VERSION "Override the current API version (e.g. to compile against 1.6 api when 1.8 is installed)" OFF)
+if(OVERRIDE_SVN_API_VERSION)
+  set(OVERRIDE_SVN_API_VERSION_STR 0x10600 CACHE STRING "svn api version to use, hex format, two digits per major/minor/patch")
+endif()
+
 set(SOURCES
     annotate_line.cpp
     apr.cpp
@@ -56,7 +61,6 @@ set(SOURCES
     log_entry.cpp
     path.cpp
     pool.cpp
-    repoparameter.cpp
     repository.cpp
     repositorydata.cpp
     repositorylistener.cpp
@@ -72,26 +76,6 @@ set(SOURCES
     )
 
 
-if(QT_LUPDATE_EXECUTABLE)
-    message(STATUS "Setting up language target")
-
-    file(GLOB _LANGFILES lang/*.ts)
-    foreach(_p ${_LANGFILES})
-        set(LANGFILES "-ts ${_p} ${LANGFILES}")
-    endforeach()
-    configure_file(
-        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/update-language.sh.in"
-        "${CMAKE_CURRENT_BINARY_DIR}/update-language.sh"
-        IMMEDIATE
-        @ONLY)
-    add_custom_target(svnqt_update_translation
-        "${CMAKE_CURRENT_BINARY_DIR}/update-language.sh"
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-        VERBATIM
-    )
-    add_subdirectory(lang)
-endif()
-
 configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/svnqt_defines.h.in"
     "${CMAKE_CURRENT_BINARY_DIR}/svnqt_defines.h"
@@ -101,6 +85,9 @@ configure_file(
 add_library(svnqt STATIC ${SOURCES})
 if(WIN32)
     target_compile_definitions(svnqt PUBLIC _USE_32BIT_TIME_T)
+endif()
+if(OVERRIDE_SVN_API_VERSION)
+    target_compile_definitions(svnqt PUBLIC OVERRIDE_SVN_API_VERSION=${OVERRIDE_SVN_API_VERSION_STR})
 endif()
 
 set(ALL_LINKFLAGS ${APR_EXTRA_LDFLAGS})
@@ -113,9 +100,16 @@ else()
 endif()
 
 target_link_libraries(svnqt
-    ${SUBVERSION_ALL_LIBS}
-    ${QT_QTCORE_LIBRARY}
-    ${QT_QTSQL_LIBRARY}
+    PUBLIC
+        ${SUBVERSION_ALL_LIBS}
+        KF5::ConfigCore
+        Qt5::Core
+        Qt5::Sql
+)
+target_include_directories(svnqt
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/../
+        ${CMAKE_CURRENT_BINARY_DIR}/../
 )
 set_property(TARGET svnqt APPEND PROPERTY COMPILE_FLAGS ${APR_CPP_FLAGS})
 set_property(TARGET svnqt PROPERTY CXX_VISIBILITY_PRESET hidden)
@@ -129,11 +123,6 @@ if(KDE4_BUILD_TESTS)
     add_executable(testlink testmain.cpp)
     target_link_libraries(testlink svnqt)
 endif()
-
-# install rules
-install(TARGETS svnqt LIBRARY DESTINATION ${LIB_INSTALL_DIR}
-        RUNTIME DESTINATION ${BIN_INSTALL_DIR}
-        ARCHIVE DESTINATION ${LIB_INSTALL_DIR})
 
 if(KDE4_BUILD_TESTS)
   add_subdirectory(tests)

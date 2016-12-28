@@ -20,24 +20,19 @@
 #ifndef MAINTREEWIDGET_H
 #define MAINTREEWIDGET_H
 
-#include "src/svnfrontend/ui_treeWidget.h"
+#include "ui_treeWidget.h"
 #include "itemdisplay.h"
 #include "frontendtypes.h"
 
-#include "src/svnqt/status.h"
-#include "src/svnqt/client.h"
+#include "svnqt/status.h"
+#include "svnqt/client.h"
 
 #include <kservice.h>
 #include <krun.h>
 
 class KActionCollection;
 class MainTreeWidgetData;
-class KIcon;
-class KShortcut;
-class KAction;
-class KActionCollection;
 class SvnItemModelNode;
-class KDialog;
 class KJob;
 
 class MainTreeWidget: public QWidget, public Ui::mainTreeWidget, public ItemDisplay
@@ -51,7 +46,7 @@ public:
     virtual SvnItem *Selected()const;
     virtual SvnItemList SelectionList()const;
     virtual svn::Revision baseRevision()const;
-    virtual bool openUrl(const KUrl &url, bool noReinit = false);
+    virtual bool openUrl(const QUrl &url, bool noReinit = false);
     virtual SvnItem *SelectedOrMain()const;
 
     SvnItem *DirSelected()const;
@@ -72,8 +67,8 @@ Q_SIGNALS:
     void changeCaption(const QString &);
     void sigShowPopup(const QString &, QWidget **);
     void sigUrlOpend(bool);
-    void sigSwitchUrl(const KUrl &);
-    void sigUrlChanged(const QString &);
+    void sigSwitchUrl(const QUrl &);
+    void sigUrlChanged(const QUrl &);
     void sigProplist(const svn::PathPropertiesMapListPtr &, bool, bool, const QString &);
     void sigListError();
     void sigCacheStatus(qlonglong, qlonglong);
@@ -139,7 +134,7 @@ protected Q_SLOTS:
     void slotRelocate();
     void slotImportIntoCurrent(bool);
     void slotImportDirsIntoCurrent();
-    void slotImportIntoDir(const KUrl &, const QString &, bool);
+    void slotImportIntoDir(const QString &source, const QUrl &_targetUri, bool dirs);
     void slotChangeToRepository();
     void slotCheckNewItems();
 
@@ -150,7 +145,7 @@ protected Q_SLOTS:
 
     void slotDirSelectionChanged(const QItemSelection &, const QItemSelection &);
 
-    void _openUrl(const QString &);
+    void _openUrl(const QUrl &);
     void enableActions();
     void slotUnfoldTree();
     void slotFoldTree();
@@ -161,12 +156,13 @@ protected Q_SLOTS:
     void slotCopyFinished(KJob *job);
     void slotUpdateLogCache();
 
-    void slotUrlDropped(const KUrl::List &, Qt::DropAction, const QModelIndex &, bool);
+    void slotUrlDropped(const QList<QUrl> &, Qt::DropAction, const QModelIndex &, bool);
     void slotRepositorySettings();
 
     void slotRightProperties();
     void slotLeftProperties();
 
+    void resizeAllColumns();
 protected:
     virtual void keyPressEvent(QKeyEvent *);
     void setupActions();
@@ -178,8 +174,7 @@ protected:
     void copy_move(bool move);
     void itemActivated(const QModelIndex &index, bool keypress = false);
 
-    void internalDrop(const KUrl::List &_lst, Qt::DropAction action, const QModelIndex &index);
-    void resizeAllColumns();
+    void internalDrop(const QList<QUrl> &_lst, Qt::DropAction action, const QModelIndex &index);
     void execContextMenu(const SvnItemList &);
     void simpleWcDiff(SvnItem *which, const svn::Revision &, const svn::Revision &);
     void doLog(bool, bool)const;
@@ -193,10 +188,10 @@ private:
     MainTreeWidgetData *m_Data;
     void enableAction(const QString &, bool);
 
-    KAction *add_action(const QString &actionname,
+    QAction *add_action(const QString &actionname,
                         const QString &text,
-                        const KShortcut &sequ,
-                        const KIcon &,
+                        const QKeySequence &sequ,
+                        const QIcon &,
                         QObject *,
                         const char *slot);
 };

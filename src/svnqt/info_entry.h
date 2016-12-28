@@ -24,14 +24,25 @@
 #ifndef SVNQT_INFO_ENTRY_H
 #define SVNQT_INFO_ENTRY_H
 
+#include <svnqt/helper.h>
 #include <svnqt/lock_entry.h>
 #include <svnqt/datetime.h>
 #include <svnqt/revision.h>
 #include <svnqt/svnqttypes.h>
+#include <svnqt/conflictdescription.h>
 
 #include <QString>
+#include <QUrl>
 
+#include <svn_version.h>
+
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,7,0)
+#undef SVN_INFO_SIMPLE_CONFLICT_TYPE
+struct svn_client_info2_t;
+#else
+#define SVN_INFO_SIMPLE_CONFLICT_TYPE 1
 struct svn_info_t;
+#endif
 
 namespace svn
 {
@@ -40,13 +51,22 @@ class SVNQT_EXPORT InfoEntry
 public:
     static const qlonglong SVNQT_SIZE_UNKNOWN = -1;
     InfoEntry();
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,7,0)
+    InfoEntry(const svn_client_info2_t *, const char *path);
+    InfoEntry(const svn_client_info2_t *, const QString &path);
+#else
     InfoEntry(const svn_info_t *, const char *path);
     InfoEntry(const svn_info_t *, const QString &path);
-    InfoEntry(const InfoEntry &);
+#endif
     ~InfoEntry();
 
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,7,0)
+    void init(const svn_client_info2_t *, const char *path);
+    void init(const svn_client_info2_t *, const QString &path);
+#else
     void init(const svn_info_t *, const char *path);
     void init(const svn_info_t *, const QString &path);
+#endif
 
     DateTime cmtDate()const;
     DateTime textTime()const;
@@ -64,13 +84,19 @@ public:
     const QString &Name()const;
 
     const QString &checksum()const;
+
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,7,0)
+    const ConflictDescriptionList &conflicts()const;
+#else
     const QString &conflictNew()const;
     const QString &conflictOld()const;
     const QString &conflictWrk()const;
-    const QString &copyfromUrl()const;
+#endif
+
+    const QUrl &copyfromUrl()const;
     const QString &prejfile()const;
-    const QString &reposRoot()const;
-    const QString &url()const;
+    const QUrl &reposRoot()const;
+    const QUrl &url()const;
     const QString &uuid()const;
     svn_node_kind_t kind()const;
     const Revision &cmtRev()const;
@@ -83,10 +109,7 @@ public:
     const QByteArray &changeList()const;
     svn::Depth depth()const;
 
-    const QString &prettyUrl()const;
-
     bool isDir()const;
-    QString prettyUrl(const char *)const;
 
 protected:
     DateTime m_last_changed_date;
@@ -96,15 +119,18 @@ protected:
     LockEntry m_Lock;
     QString m_name;
     QString m_checksum;
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,7,0)
+    ConflictDescriptionList m_conflicts;
+#else
     QString m_conflict_new;
     QString m_conflict_old;
     QString m_conflict_wrk;
-    QString m_copyfrom_url;
+#endif
+    QUrl m_copyfrom_url;
     QString m_last_author;
     QString m_prejfile;
-    QString m_repos_root;
-    QString m_url;
-    QString m_pUrl;
+    QUrl m_repos_root;
+    QUrl m_url;
     QString m_UUID;
     svn_node_kind_t m_kind;
     Revision m_copy_from_rev;

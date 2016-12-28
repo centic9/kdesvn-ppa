@@ -73,6 +73,7 @@ public:
     virtual void
     setContext(const ContextP &context);
 
+
     /**
      * Enumerates all files/dirs at a given path.
      *
@@ -95,7 +96,7 @@ public:
      * @return a Status with Statis.isVersioned = FALSE
      */
     virtual StatusPtr
-    singleStatus(const Path &path, bool update = false, const Revision revision = svn::Revision::HEAD) throw (ClientException);
+    singleStatus(const Path &path, bool update = false, const Revision &revision = svn::Revision::HEAD) throw (ClientException);
 
     /**
      * Executes a revision checkout.
@@ -112,7 +113,7 @@ public:
      */
     virtual void
     relocate(const Path &path, const Url &from_url,
-             const Url &to_url, bool recurse) throw (ClientException);
+             const Url &to_url, bool recurse, bool ignore_externals) throw (ClientException);
 
     /**
      * Sets files for deletion.
@@ -136,6 +137,7 @@ public:
            Depth depth,
            const StringArray &changelist = StringArray()
           ) throw (ClientException);
+
 
     /**
      * Adds a file to the repository.
@@ -301,21 +303,21 @@ public:
      * @exception ClientException
      */
     virtual Revision
-    doSwitch(
-        const Path &path, const Url &url,
+    doSwitch(const Path &path, const Url &url,
         const Revision &revision,
         Depth depth,
         const Revision &peg = Revision::UNDEFINED,
         bool sticky_depth = true,
         bool ignore_externals = false,
-        bool allow_unversioned = false
-    ) throw (ClientException);
+        bool allow_unversioned = false,
+        bool ignore_ancestry = false
+      ) throw (ClientException);
 
     /**
      * Import file or directory PATH into repository directory URL at
      * head.  This usually requires authentication, see Auth.
      * @param path path to import
-     * @param url
+     * @param importRepository
      * @param message log message.
      * @param depth kind of recurse operation
      * @param no_ignore if false, don't add items matching global ignore pattern
@@ -323,7 +325,7 @@ public:
      * @exception ClientException
      */
     virtual svn::Revision
-    import(const Path &path, const Url &url,
+    import(const Path &path, const Url &importRepository,
            const QString &message,
            svn::Depth depth,
            bool no_ignore, bool no_unknown_nodetype,
@@ -467,7 +469,7 @@ public:
      * repository
      *
      * @param params svn::PropertiesParameter holding required values.
-     * Following is used:<br>
+     * Following is used:<br/>
      * <ul>
      * <li> svn::PropertiesParameter::propertyName()
      * <li> svn::PropertiesParameter::propertyValue()
@@ -562,18 +564,6 @@ public:
 
     virtual bool RepoHasCapability(const Path &repository, Capability capability);
 
-    struct sBaton {
-        sBaton(): m_data(0), m_revstack(0), excludeList(0) {}
-        ContextWP m_context;
-        void *m_data;
-        void *m_revstack;
-        const StringArray *excludeList;
-    };
-
-    struct propBaton {
-        ContextWP m_context;
-        PathPropertiesMapListPtr resultlist;
-    };
     static void checkErrorThrow(svn_error_t *error)throw(ClientException)
     {
         if (!error || error->apr_err == APR_SUCCESS) {
@@ -595,17 +585,6 @@ private:
      */
     Client_impl(const Client_impl &);
 
-    DirEntries
-    list_simple(const Path &pathOrUrl,
-                const Revision &revision,
-                const Revision &peg,
-                bool recurse) throw (ClientException);
-    DirEntries
-    list_locks(const Path &pathOrUrl,
-               const Revision &revision,
-               const Revision &peg,
-               bool recurse) throw (ClientException);
-
     svn_error_t *internal_cat(const Path &path,
                               const Revision &revision,
                               const Revision &peg_revision,
@@ -613,24 +592,12 @@ private:
 
     static apr_hash_t *map2hash(const PropertiesMap &, const Pool &);
 
-    //! helper method
-    virtual void
-    merge_peg(const Path &src,
-              const RevisionRange &range,
-              const Revision &peg,
-              const Path &targetWc,
-              Depth depth,
-              bool notice_ancestry,
-              bool dry_run,
-              bool force,
-              const StringArray &merge_options
-             ) throw (ClientException);
-
     /** helper method
      * @sa svn_client_merge_reintegrate
      */
     virtual void merge_reintegrate(const MergeParameter &parameters) throw (ClientException);
 };
+
 
 }
 

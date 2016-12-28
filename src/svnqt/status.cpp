@@ -50,8 +50,11 @@ public:
      * @param path
      * @param status if NULL isVersioned will be false
      */
-    void
-    init(const QString &path, const svn_wc_status2_t *status);
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,7,0)
+    void init(const QString &path, const svn_client_status_t *status);
+#else
+    void init(const QString &path, const svn_wc_status2_t *status);
+#endif
     void
     init(const QString &path, const Status_private &src);
     void
@@ -67,7 +70,7 @@ public:
     LockEntry m_Lock;
     Entry m_entry;
 
-    svn_wc_status_kind m_text_status, m_prop_status, m_repos_text_status, m_repos_prop_status;
+    svn_wc_status_kind m_node_status, m_text_status, m_prop_status, m_repos_text_status, m_repos_prop_status;
     bool m_copied, m_switched;
 };
 
@@ -75,6 +78,7 @@ Status_private::Status_private()
     : m_Path()
     , m_isVersioned(false)
     , m_hasReal(false)
+    , m_node_status(svn_wc_status_none)
     , m_text_status(svn_wc_status_none)
     , m_prop_status(svn_wc_status_none)
     , m_repos_text_status(svn_wc_status_none)
@@ -99,7 +103,11 @@ void Status_private::setPath(const QString &aPath)
     }
 }
 
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,7,0)
+void Status_private::init(const QString &path, const svn_client_status_t *status)
+#else
 void Status_private::init(const QString &path, const svn_wc_status2_t *status)
+#endif
 {
     setPath(path);
     if (!status) {
@@ -108,15 +116,25 @@ void Status_private::init(const QString &path, const svn_wc_status2_t *status)
         m_entry = Entry();
         m_Lock = LockEntry();
     } else {
+        // now duplicate the contents
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,7,0)
+        // svn 1.7 does not cound ignored entries as versioned but we do here...
+        m_isVersioned = status->node_status > svn_wc_status_unversioned;
+        m_hasReal = m_isVersioned &&
+                    status->node_status != svn_wc_status_ignored;
+        m_entry = Entry(status);
+        m_node_status = status->node_status;
+#else
         m_isVersioned = status->text_status > svn_wc_status_unversioned || status->repos_text_status > svn_wc_status_unversioned;
         m_hasReal = m_isVersioned &&
                     status->text_status != svn_wc_status_ignored;
-        // now duplicate the contents
         if (status->entry) {
             m_entry = Entry(status->entry);
         } else {
             m_entry = Entry();
         }
+        m_node_status = status->text_status;
+#endif
         m_text_status = status->text_status;
         m_prop_status = status->prop_status;
         m_copied = status->copied != 0;
@@ -143,6 +161,7 @@ Status_private::init(const QString &path, const Status_private &src)
     m_entry = src.m_entry;
     m_isVersioned = src.m_isVersioned;
     m_hasReal = src.m_hasReal;
+    m_node_status = src.m_node_status;
     m_text_status = src.m_text_status;
     m_prop_status = src.m_prop_status;
     m_repos_text_status = src.m_repos_text_status;
@@ -155,6 +174,7 @@ void Status_private::init(const QString &url, const DirEntry &src)
 {
     m_entry = Entry(url, src);
     setPath(url);
+    m_node_status = svn_wc_status_normal;
     m_text_status = svn_wc_status_normal;
     m_prop_status = svn_wc_status_normal;
     if (!src.isEmpty()) {
@@ -172,6 +192,7 @@ void Status_private::init(const QString &url, const InfoEntry &src)
     m_entry = Entry(url, src);
     setPath(url);
     m_Lock = src.lockEntry();
+    m_node_status = svn_wc_status_normal;
     m_text_status = svn_wc_status_normal;
     m_prop_status = svn_wc_status_normal;
     m_repos_text_status = svn_wc_status_normal;
@@ -192,16 +213,23 @@ Status::Status(const Status &src)
     }
 }
 
-Status::Status(const QString &path, svn_wc_status2_t *status)
-    : m_Data(new Status_private())
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,7,0)
+Status::Status(const char *path, const svn_client_status_t *status)
+  : m_Data(new Status_private())
+{
+    m_Data->init(QString::fromUtf8(path), status);
+}
+#else
+Status::Status(const char *path, const svn_wc_status2_t *status)
+  : m_Data(new Status_private())
 {
     m_Data->init(path, status);
 }
-
-Status::Status(const char *path, svn_wc_status2_t *status)
+#endif
+Status::Status(const QString &path)
     : m_Data(new Status_private())
 {
-    m_Data->init(QString::fromUtf8(path), status);
+    m_Data->init(path, NULL);
 }
 
 Status::Status(const QString &url, const DirEntry &src)
@@ -284,6 +312,12 @@ bool
 Status::isVersioned() const
 {
     return m_Data->m_isVersioned;
+}
+
+svn_wc_status_kind
+Status::nodeStatus() const
+{
+    return m_Data->m_node_status;
 }
 
 svn_wc_status_kind

@@ -19,9 +19,9 @@
  ***************************************************************************/
 #include "pwstorage.h"
 #include "kdesvn-config.h"
-#include "src/settings/kdesvnsettings.h"
+#include "settings/kdesvnsettings.h"
 
-#include <kwallet.h>
+#include <KWallet>
 
 #include <QApplication>
 #include <QWidget>
@@ -107,10 +107,8 @@ PwStorage *PwStorage::self()
     \fn PwStorage::PwStorageData()
  */
 PwStorage::PwStorage()
-    : QObject()
-{
-    mData = new PwStorageData;
-}
+    : mData(new PwStorageData)
+{}
 
 /*!
     \fn PwStorage::~PwStorageData()

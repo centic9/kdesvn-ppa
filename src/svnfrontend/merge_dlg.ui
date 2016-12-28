@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>715</width>
+    <width>758</width>
     <height>450</height>
    </rect>
   </property>
@@ -170,6 +170,17 @@
          </widget>
         </item>
         <item>
+         <widget class="QCheckBox" name="m_AllowMixedRev">
+          <property name="toolTip">
+           <string>If checked, allow merge into mixed revision working copy, otherwise raises error in that case</string>
+          </property>
+          <property name="text">
+           <string>Merge into mixed revision
+working copy</string>
+          </property>
+         </widget>
+        </item>
+        <item>
          <spacer name="verticalSpacer">
           <property name="orientation">
            <enum>Qt::Vertical</enum>
@@ -217,13 +228,10 @@
  <includes>
   <include location="local">kurlrequester.h</include>
   <include location="local">klineedit.h</include>
-  <include location="local">kpushbutton.h</include>
   <include location="local">kurlrequester.h</include>
   <include location="local">klineedit.h</include>
-  <include location="local">kpushbutton.h</include>
   <include location="local">kurlrequester.h</include>
   <include location="local">klineedit.h</include>
-  <include location="local">kpushbutton.h</include>
   <include location="local">rangeinput_impl.h</include>
  </includes>
  <resources/>

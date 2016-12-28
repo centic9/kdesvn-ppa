@@ -29,6 +29,7 @@
  * ====================================================================
  */
 
+
 // svncpp
 #include "client_impl.h"
 #include "helper.h"
@@ -53,105 +54,16 @@
 namespace svn
 {
 
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 5)) || (SVN_VER_MAJOR > 1)
-static svn_error_t *
-logMapReceiver2(
-    void *baton,
-    svn_log_entry_t *log_entry,
-    apr_pool_t *pool
-)
-{
-    Q_UNUSED(pool);
-    Client_impl::sBaton *l_baton = (Client_impl::sBaton *)baton;
-    LogEntriesMap *entries =
-        (LogEntriesMap *) l_baton->m_data;
-    ContextP l_context = l_baton->m_context;
-    if (l_context.isNull()) {
-        return SVN_NO_ERROR;
-    }
-    QList<qlonglong> *rstack =
-        (QList<qlonglong> *)l_baton->m_revstack;
-    svn_client_ctx_t *ctx = l_context->ctx();
-    if (ctx && ctx->cancel_func) {
-        SVN_ERR(ctx->cancel_func(ctx->cancel_baton));
-    }
-    if (! SVN_IS_VALID_REVNUM(log_entry->revision)) {
-        if (rstack && rstack->size() > 0) {
-            rstack->pop_front();
-        }
-        return SVN_NO_ERROR;
-    }
-    (*entries)[log_entry->revision] = LogEntry(log_entry, (l_baton->excludeList ? * (l_baton->excludeList) : svn::StringArray()));
-    /// @TODO insert it into last logentry
-    if (rstack) {
-        (*entries)[log_entry->revision].m_MergedInRevisions = (*rstack);
-        if (log_entry->has_children) {
-            rstack->push_front(log_entry->revision);
-        }
-    }
-    return SVN_NO_ERROR;
-}
-#else
-static svn_error_t *
-logMapReceiver(void *baton,
-               apr_hash_t *changedPaths,
-               svn_revnum_t rev,
-               const char *author,
-               const char *date,
-               const char *msg,
-               apr_pool_t *pool
-              )
-{
-    Client_impl::sBaton *l_baton = (Client_impl::sBaton *)baton;
-    LogEntriesMap *entries =
-        (LogEntriesMap *) l_baton->m_data;
-
-    /* check every loop for cancel of operation */
-    ContextP l_context = l_baton->m_context;
-    if (l_context.isNull()) {
-        return SVN_NO_ERROR;
-    }
-    svn_client_ctx_t *ctx = l_context->ctx();
-    if (ctx && ctx->cancel_func) {
-        SVN_ERR(ctx->cancel_func(ctx->cancel_baton));
-    }
-    (*entries)[rev] = LogEntry(rev, author, date, msg);
-    if (changedPaths != NULL) {
-        LogEntry &entry = (*entries)[rev];
-
-        for (apr_hash_index_t *hi = apr_hash_first(pool, changedPaths);
-                hi != NULL;
-                hi = apr_hash_next(hi)) {
-            const void *pv;
-            void *val;
-            apr_hash_this(hi, &pv, NULL, &val);
-
-            svn_log_changed_path_t *log_item = static_cast<svn_log_changed_path_t *>(val);
-            const char *path = static_cast<const char *>(pv);
-
-            bool blocked = false;
-            if (l_baton->excludeList) {
-                QString _p(path);
-                for (int _exnr = 0; _exnr < l_baton->excludeList.size(); ++_exnr) {
-                    if (_p.startsWith(l_baton->excludeList[_exnr])) {
-                        blocked = true;
-                        break;
-                    }
-                }
-            }
-            if (!blocked) {
-                entry.changedPaths.push_back(
-                    LogChangePathEntry(path,
-                                       log_item->action,
-                                       log_item->copyfrom_path,
-                                       log_item->copyfrom_rev));
-            }
-        }
-    }
-
-    return NULL;
-}
-#endif
+struct LogBaton {
+    ContextWP context;
+    LogEntriesMap *logEntries;
+    QList<qlonglong> *revstack;
+    StringArray excludeList;
+    LogBaton()
+        : logEntries(0)
+        , revstack(0)
+    {}
+};
 
 struct StatusEntriesBaton {
     StatusEntries entries;
@@ -169,9 +81,49 @@ struct InfoEntriesBaton {
     {}
 };
 
+static svn_error_t *
+logMapReceiver2(
+    void *baton,
+    svn_log_entry_t *log_entry,
+    apr_pool_t *pool
+)
+{
+    Q_UNUSED(pool);
+    LogBaton *l_baton = static_cast<LogBaton*>(baton);
+    ContextP l_context = l_baton->context;
+    if (l_context.isNull()) {
+        return SVN_NO_ERROR;
+    }
+    svn_client_ctx_t *ctx = l_context->ctx();
+    if (ctx && ctx->cancel_func) {
+        SVN_ERR(ctx->cancel_func(ctx->cancel_baton));
+    }
+    QList<qlonglong> *rstack = l_baton->revstack;
+    if (! SVN_IS_VALID_REVNUM(log_entry->revision)) {
+        if (rstack && !rstack->isEmpty()) {
+            rstack->pop_front();
+        }
+        return SVN_NO_ERROR;
+    }
+    LogEntriesMap *entries = l_baton->logEntries;
+    (*entries)[log_entry->revision] = LogEntry(log_entry, l_baton->excludeList);
+    /// @TODO insert it into last logentry
+    if (rstack) {
+        (*entries)[log_entry->revision].m_MergedInRevisions = (*rstack);
+        if (log_entry->has_children) {
+            rstack->push_front(log_entry->revision);
+        }
+    }
+    return SVN_NO_ERROR;
+}
+
 static svn_error_t *InfoEntryFunc(void *baton,
                                   const char *path,
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,7,0)
+                                  const svn_client_info2_t *info,
+#else
                                   const svn_info_t *info,
+#endif
                                   apr_pool_t *)
 {
     InfoEntriesBaton *seb = static_cast<InfoEntriesBaton *>(baton);
@@ -190,10 +142,14 @@ static svn_error_t *InfoEntryFunc(void *baton,
     return NULL;
 }
 
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 6)) || (SVN_VER_MAJOR > 1)
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,6,0)
 static svn_error_t *StatusEntriesFunc(void *baton,
                                       const char *path,
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,7,0)
+                                      const svn_client_status_t *status,
+#else
                                       svn_wc_status2_t *status,
+#endif
                                       apr_pool_t *pool)
 {
     // use own pool - the parameter will cleared between loops!
@@ -236,9 +192,25 @@ localStatus(const StatusParameter &params,
 
     baton.pool = pool;
 
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 5)) || (SVN_VER_MAJOR > 1)
 
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 6)) || (SVN_VER_MAJOR > 1)
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,7,0)
+    error = svn_client_status5(&revnum,
+                               *context,
+                               params.path().path().toUtf8(),
+                               rev,
+                               internal::DepthToSvn(params.depth()), // see svn::Depth
+                               params.all(),           // get all not only interesting
+                               params.update(),            // check for updates
+                               params.noIgnore(),         // hide ignored files or not
+                               params.ignoreExternals(),    // hide external
+                               true,          // depth as sticky  - TODO
+                               params.changeList().array(pool),
+                               StatusEntriesFunc,
+                               &baton,
+                               pool
+                               );
+#else
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,6,0)
     error = svn_client_status4(
 #else
     error = svn_client_status3(
@@ -256,22 +228,7 @@ localStatus(const StatusParameter &params,
                 params.changeList().array(pool),
                 *context,          //client ctx
                 pool);
-#else
-    error = svn_client_status2(
-                &revnum,      // revnum
-                params.path().path().toUtf8(),         // path
-                rev,
-                StatusEntriesFunc, // status func
-                &baton,        // status baton
-                (params.depth() == DepthInfinity), //recurse
-                params.all(),       // get all not only interesting
-                params.update(),        // check for updates
-                params.noIgnore(),     // hide ignored files or not
-                params.ignoreExternals(), // hide external
-                *context,    //client ctx
-                pool);
 #endif
-
     Client_impl::checkErrorThrow(error);
     return baton.entries;
 }
@@ -286,7 +243,7 @@ dirEntryToStatus(const Path &path, const DirEntry &dirEntry)
 static StatusPtr
 infoEntryToStatus(const Path &, const InfoEntry &infoEntry)
 {
-    return StatusPtr(new Status(infoEntry.url(), infoEntry));
+    return StatusPtr(new Status(infoEntry.url().toString(), infoEntry));
 }
 
 static StatusEntries
@@ -328,9 +285,25 @@ localSingleStatus(const Path &path, const ContextP &context, bool update = false
 
     baton.pool = pool;
 
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 5)) || (SVN_VER_MAJOR > 1)
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,7,0)
+    error = svn_client_status5(&revnum,
+                               *context,
+                               path.path().toUtf8(),
+                               rev,
+                               svn_depth_empty, // not recurse
+                               true,           // get all not only interesting
+                               update,         // check for updates
+                               false,          // hide ignored files or not
+                               false,          // hide external
+                               true,          // depth as sticky
+                               0,
+                               StatusEntriesFunc,
+                               &baton,
+                               pool
+                               );
 
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 6)) || (SVN_VER_MAJOR > 1)
+#else
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,6,0)
     error = svn_client_status4(
 #else
     error = svn_client_status3(
@@ -348,20 +321,6 @@ localSingleStatus(const Path &path, const ContextP &context, bool update = false
                 0,
                 *context,          //client ctx
                 pool);
-#else
-    error = svn_client_status2(
-                &revnum,      // revnum
-                path.path().toUtf8(),         // path
-                rev,
-                StatusEntriesFunc, // status func
-                &baton,        // status baton
-                false,
-                true,
-                update,
-                false,
-                false,
-                *context,    //client ctx
-                pool);
 #endif
     Client_impl::checkErrorThrow(error);
     if (baton.entries.isEmpty()) {
@@ -372,7 +331,7 @@ localSingleStatus(const Path &path, const ContextP &context, bool update = false
 }
 
 static StatusPtr
-remoteSingleStatus(Client *client, const Path &path, const Revision revision, const ContextP &)
+remoteSingleStatus(Client *client, const Path &path, const Revision &revision, const ContextP &)
 {
     const InfoEntries infoEntries = client->info(path, DepthEmpty, revision, Revision(Revision::UNDEFINED));
     if (infoEntries.isEmpty()) {
@@ -382,7 +341,7 @@ remoteSingleStatus(Client *client, const Path &path, const Revision revision, co
 }
 
 StatusPtr
-Client_impl::singleStatus(const Path &path, bool update, const Revision revision) throw (ClientException)
+Client_impl::singleStatus(const Path &path, bool update, const Revision &revision) throw (ClientException)
 {
     if (Url::isValid(path.path())) {
         return remoteSingleStatus(this, path, revision, m_context);
@@ -394,15 +353,15 @@ bool
 Client_impl::log(const LogParameter &params, LogEntriesMap &log_target) throw (ClientException)
 {
     Pool pool;
-    sBaton l_baton;
+    LogBaton l_baton;
     QList<qlonglong> revstack;
-    l_baton.m_context = m_context;
-    l_baton.m_data = &log_target;
-    l_baton.m_revstack = &revstack;
-    l_baton.excludeList = & (params.excludeList());
+    l_baton.context = m_context;
+    l_baton.excludeList = params.excludeList();
+    l_baton.logEntries = &log_target;
+    l_baton.revstack = &revstack;
     svn_error_t *error;
 
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 6)) || (SVN_VER_MAJOR > 1)
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,6,0)
     error = svn_client_log5(
                 params.targets().array(pool),
                 params.peg().revision(),
@@ -416,7 +375,7 @@ Client_impl::log(const LogParameter &params, LogEntriesMap &log_target) throw (C
                 &l_baton,
                 *m_context, // client ctx
                 pool);
-#elif ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 5))
+#else
     error = svn_client_log4(
                 params.targets().array(pool),
                 params.peg().revision(),
@@ -428,31 +387,6 @@ Client_impl::log(const LogParameter &params, LogEntriesMap &log_target) throw (C
                 params.includeMergedRevisions() ? 1 : 0,
                 params.revisionProperties().array(pool),
                 logMapReceiver2,
-                &l_baton,
-                *m_context, // client ctx
-                pool);
-#elif ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 4)) || (SVN_VER_MAJOR > 1)
-    error = svn_client_log3(
-                params.targets().array(pool),
-                params.peg().revision(),
-                params.revisionRange().first.revision(),
-                params.revisionRange().second.revision(),
-                params.limit(),
-                params.discoverChangedPathes() ? 1 : 0,
-                params.strictNodeHistory() ? 1 : 0,
-                logMapReceiver,
-                &l_baton,
-                *m_context, // client ctx
-                pool);
-#else
-    error = svn_client_log2(
-                params.targets().array(pool),
-                params.revisionRange().first.revision(),
-                params.revisionRange().second.revision(),
-                params.limit(),
-                params.discoverChangedPathes() ? 1 : 0,
-                params.strictNodeHistory() ? 1 : 0,
-                logMapReceiver,
                 &l_baton,
                 *m_context, // client ctx
                 pool);
@@ -492,29 +426,31 @@ Client_impl::info(const Path &_p,
         }
     }
 
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 5)) || (SVN_VER_MAJOR > 1)
     error =
-        svn_client_info2(truepath,
-                         internal_peg ? &pegr : peg_revision.revision(),
-                         rev.revision(),
-                         &InfoEntryFunc,
-                         &baton,
-                         internal::DepthToSvn(depth),
-                         changelists.array(pool),
-                         *m_context,    //client ctx
-                         pool);
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,7,0)
+        svn_client_info3
+        (truepath,
+         internal_peg ? &pegr : peg_revision.revision(),
+         rev.revision(),
+         internal::DepthToSvn(depth),
+         false, // TODO parameter for fetch exclueded
+         false, // TODO parameter for fetch_actual_only
+         changelists.array(pool),
+         &InfoEntryFunc,
+         &baton,
+         *m_context,
+         pool);
 #else
-    bool rec = depth == DepthInfinity;
-    Q_UNUSED(changelists);
-    error =
-        svn_client_info(truepath,
-                        internal_peg ? &pegr : peg_revision.revision(),
-                        rev.revision(),
-                        &InfoEntryFunc,
-                        &baton,
-                        rec,
-                        *m_context,    //client ctx
-                        pool);
+        svn_client_info2
+        (truepath,
+         internal_peg ? &pegr : peg_revision.revision(),
+         rev.revision(),
+         &InfoEntryFunc,
+         &baton,
+         internal::DepthToSvn(depth),
+         changelists.array(pool),
+         *m_context,    //client ctx
+         pool);
 #endif
 
     checkErrorThrow(error);

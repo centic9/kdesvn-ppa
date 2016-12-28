@@ -18,8 +18,11 @@
  #   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.         #
  ####
 
-kde4_add_executable(kdesvnaskpass askpass/kdesvn-askpass.cpp)
+add_executable(kdesvnaskpass askpass/kdesvn-askpass.cpp)
 
+ki18n_wrap_ui(kdesvn_ui
+    urldlg.ui
+)
 set(kdesvnsrc
     commandline.cpp
     kdesvn.cpp
@@ -34,7 +37,7 @@ set(partsrc
 )
 
 set(partsrc ${partsrc} kdesvn_part.h kdesvnview.h commandline_part.h)
-set(kdesvnsrc ${kdesvnsrc} kdesvn.h urldlg.h commandline.h)
+set(kdesvnsrc ${kdesvnsrc} ${kdesvn_ui} kdesvn.h urldlg.h commandline.h)
 
 add_subdirectory(svnqt)
 add_subdirectory(ksvnwidgets)
@@ -46,35 +49,33 @@ add_subdirectory(kiosvn)
 add_subdirectory(pics)
 add_subdirectory(icons)
 
-kde4_add_executable(kdesvn ${kdesvnsrc})
-kde4_add_plugin(kdesvnpart ${partsrc})
+add_executable(kdesvn ${kdesvnsrc})
+add_library(kdesvnpart MODULE ${partsrc})
 
-target_link_libraries(kdesvnpart svnfrontend kdesvnhelpers ksvnwidgets settingsdlgs kdesvncfgreader svnbackground svnqt
-    ${QT_QTCORE_LIBRARY}
-    ${QT_QTGUI_LIBRARY}
-    ${KDE4_KDECORE_LIBRARY}
-    ${KDE4_KDEUI_LIBRARY}
-    ${KDE4_KIO_LIBRARY}
-    ${KDE4_KPARTS_LIBRARY}
-    )
+target_link_libraries(kdesvnpart
+    svnfrontend
+    kdesvnhelpers
+    ksvnwidgets
+    settingsdlgs
+    kdesvncfgreader
+    svnbackground
+    svnqt
+)
 
 set_target_properties(kdesvnpart
     PROPERTIES
     LINK_FLAGS "${APR_EXTRA_LDFLAGS} ${APU_EXTRA_LDFLAGS} ${LINK_NO_UNDEFINED}")
 
-include_directories(${CMAKE_BINARY_DIR}/src/svnqt)
-
-target_link_libraries(kdesvnaskpass #${QT_QTCORE_LIBRARY} ${QT_AND_KDECORE_LIBS} ${KDE4_KDEUI_LIBRARY}
-    ${QT_QTCORE_LIBRARY}
-    ${KDE4_KDECORE_LIBRARY}
-    ${KDE4_KDEUI_LIBRARY}
+target_link_libraries(kdesvnaskpass
+    KF5::CoreAddons
+    KF5::I18n
+    KF5::WidgetsAddons
+    KF5::Wallet
 )
-target_link_libraries(kdesvn #${QT_AND_KDECORE_LIBS}
-    ${QT_QTCORE_LIBRARY}
-    ${QT_QTGUI_LIBRARY}
-    ${KDE4_KDECORE_LIBRARY}
-    ${KDE4_KDEUI_LIBRARY}
-    ${KDE4_KPARTS_LIBRARY}
+target_link_libraries(kdesvn
+    KF5::Parts
+    KF5::Bookmarks
+    kdesvnhelpers
 )
 
 install(TARGETS kdesvn kdesvnaskpass kdesvnpart
@@ -82,8 +83,8 @@ install(TARGETS kdesvn kdesvnaskpass kdesvnpart
     LIBRARY DESTINATION ${PLUGIN_INSTALL_DIR})
 
 # the resources
-install(FILES kdesvnui.rc DESTINATION ${DATA_INSTALL_DIR}/kdesvn)
-install(FILES kdesvn_part.rc DESTINATION ${DATA_INSTALL_DIR}/kdesvnpart)
-install(FILES kdesvn.desktop DESTINATION ${XDG_APPS_INSTALL_DIR})
+install(FILES kdesvnui.rc DESTINATION ${KXMLGUI_INSTALL_DIR}/kdesvn)
+install(FILES kdesvn_part.rc DESTINATION ${KXMLGUI_INSTALL_DIR}/kdesvn)
+install(FILES org.kde.kdesvn.desktop DESTINATION ${KDE_INSTALL_APPDIR})
 install(FILES kdesvnpart.desktop  DESTINATION ${SERVICES_INSTALL_DIR})
 install(FILES kdesvn.notifyrc DESTINATION ${DATA_INSTALL_DIR}/kdesvn)

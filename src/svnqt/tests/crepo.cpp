@@ -21,13 +21,13 @@
  * individuals.  For exact contribution history, see the revision          *
  * history and logs, available at http://kdesvn.alwins-world.de.           *
  ***************************************************************************/
-#include "src/svnqt/client.h"
+#include "svnqt/client.h"
 #include "svnqt/tests/testconfig.h"
-#include "src/svnqt/repository.h"
-#include "src/svnqt/repositorylistener.h"
-#include "src/svnqt/repoparameter.h"
-#include "src/svnqt/targets.h"
-#include "src/svnqt/client_parameter.h"
+#include "svnqt/repository.h"
+#include "svnqt/repositorylistener.h"
+#include "svnqt/repoparameter.h"
+#include "svnqt/targets.h"
+#include "svnqt/client_parameter.h"
 
 #include "testlistener.h"
 
@@ -42,11 +42,11 @@ public:
     virtual ~Listener() {}
     virtual void sendWarning(const QString &msg)
     {
-        std::cout << msg.toAscii().data() << std::endl;
+        std::cout << msg.toLatin1().data() << std::endl;
     }
     virtual void sendError(const QString &msg)
     {
-        std::cout << msg.toAscii().data() << std::endl;
+        std::cout << msg.toLatin1().data() << std::endl;
     }
     virtual bool isCanceld()
     {
@@ -74,9 +74,12 @@ int main(int, char **)
     p = "file://" + p;
 
     m_Svnclient->setContext(m_CurrentContext);
-    QStringList s; s.append(p + "/trunk"); s.append(p + "/branches"); s.append(p + "/tags");
+    svn::Paths s;
+    s.append(svn::Path(p + QLatin1String("/trunk")));
+    s.append(svn::Path(p + QLatin1String("/branches")));
+    s.append(svn::Path(p + QLatin1String("/tags")));
     svn::CheckoutParameter cparams;
-    cparams.moduleName(p).destination(TESTCOPATH).revision(svn::Revision::HEAD).peg(svn::Revision::HEAD).depth(svn::DepthInfinity);
+    cparams.moduleName(p).destination(QString::fromLatin1(TESTCOPATH)).revision(svn::Revision::HEAD).peg(svn::Revision::HEAD).depth(svn::DepthInfinity);
 
     try {
         m_Svnclient->mkdir(svn::Targets(s), "Test mkdir");

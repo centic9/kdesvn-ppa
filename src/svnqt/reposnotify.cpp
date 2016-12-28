@@ -21,11 +21,11 @@
 #include "svnqt/svnqt_defines.h"
 #include "svnqt/revision.h"
 #include "svnqt/path.h"
+#include "svnqt/helper.h"
 
-#include <svn_version.h>
 #include <svn_props.h>
 
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 7) || SVN_VER_MAJOR>1)
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,7,0)
 #include <svn_repos.h>
 #endif
 
@@ -38,7 +38,7 @@ class ReposNotifyData
 {
     QString _warning_msg;
 
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 7) || SVN_VER_MAJOR>1)
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,7,0)
     /// TODO own datatype
     svn_repos_notify_action_t _action;
     svn::Revision _rev;
@@ -61,7 +61,7 @@ public:
     ReposNotifyData(const svn_repos_notify_t *notify)
         : _warning_msg(QString()), _msg(QString())
     {
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 7) || SVN_VER_MAJOR>1)
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,7,0)
         if (!notify) {
             return;
         }
@@ -76,7 +76,7 @@ public:
         _newrev = notify->new_revision;
         _node_action = notify->node_action;
         if (notify->path != 0L) {
-            _path = svn::Path(notify->path);
+            _path = svn::Path(QString::fromUtf8(notify->path));
         }
 #endif
     }
@@ -87,19 +87,19 @@ public:
 
     const QString &toString()const
     {
-#if ((SVN_VER_MAJOR == 1) && (SVN_VER_MINOR >= 7) || SVN_VER_MAJOR>1)
-        if (_msg.length() == 0) {
+#if SVN_API_VERSION >= SVN_VERSION_CHECK(1,7,0)
+        if (_msg.isEmpty()) {
             switch (_action) {
             case svn_repos_notify_warning: {
                 switch (_warning) {
                 case svn_repos_notify_warning_found_old_reference:
-                    _msg = "Old Reference: ";
+                    _msg = QStringLiteral("Old Reference: ");
                     break;
                 case svn_repos_notify_warning_found_old_mergeinfo:
-                    _msg = "Old mergeinfo found: ";
+                    _msg = QStringLiteral("Old mergeinfo found: ");
                     break;
                 case svn_repos_notify_warning_invalid_fspath:
-                    _msg = "Invalid path: ";
+                    _msg = QStringLiteral("Invalid path: ");
                     break;
                 default:
                     _msg.clear();
@@ -109,39 +109,39 @@ public:
             break;
             case svn_repos_notify_dump_rev_end:
             case svn_repos_notify_verify_rev_end: {
-                _msg = QString("Revision ").append(_rev.toString()).append(QString(" finished."));
+                _msg = QStringLiteral("Revision %1 finished.").arg(_rev.toString());
             }
             break;
             case svn_repos_notify_dump_end: {
-                _msg = QString("Dump finished");
+                _msg = QStringLiteral("Dump finished");
             }
             break;
             case svn_repos_notify_verify_end: {
-                _msg = QString("Verification finished");
+                _msg = QStringLiteral("Verification finished");
             }
             break;
             case svn_repos_notify_pack_shard_start: {
-                _msg = QString("Packing revisions in shard %ul").arg(_shard);
+                _msg = QStringLiteral("Packing revisions in shard %1").arg(_shard);
             }
             break;
             case svn_repos_notify_pack_shard_end_revprop:
             case svn_repos_notify_pack_shard_end:
             case svn_repos_notify_load_node_done: {
-                _msg = QString("Done");
+                _msg = QStringLiteral("Done");
             }
             break;
             case svn_repos_notify_pack_shard_start_revprop: {
-                _msg = QString("Packing revsion properties in shard %ul").arg(_shard);
+                _msg = QStringLiteral("Packing revsion properties in shard %1").arg(_shard);
             }
             break;
             case svn_repos_notify_load_txn_start: {
-                _msg = QString("Start loading old revision ").append(_oldrev.toString());
+                _msg = QStringLiteral("Start loading old revision ") + _oldrev.toString();
             }
             break;
             case svn_repos_notify_load_txn_committed: {
-                _msg = QString("Committed new revision ").append(_newrev.toString());
+                _msg = QLatin1String("Committed new revision ") + _newrev.toString();
                 if (_oldrev.isValid()) {
-                    _msg.append(" loaded from original revision ").append(_oldrev.toString());
+                    _msg.append(QLatin1String(" loaded from original revision ")).append(_oldrev.toString());
                 }
             }
             break;
@@ -149,27 +149,27 @@ public:
                 QString action;
                 switch (_node_action) {
                 case svn_node_action_change:
-                    action = "changing";
+                    action = QStringLiteral("changing");
                     break;
                 case svn_node_action_add:
-                    action = "adding";
+                    action = QStringLiteral("adding");
                     break;
                 case svn_node_action_delete:
-                    action = "deletion";
+                    action = QStringLiteral("deletion");
                     break;
                 case svn_node_action_replace:
-                    action = "replacing";
+                    action = QStringLiteral("replacing");
                     break;
                 }
-                _msg = QString("Start ").append(action).append(" on node ").append(_path.native());
+                _msg = QLatin1String("Start ") + action + QLatin1String(" on node ") + _path.native();
             }
             break;
             case svn_repos_notify_load_copied_node: {
-                _msg = QString("Copied");
+                _msg = QStringLiteral("Copied");
             }
             break;
             case svn_repos_notify_load_normalized_mergeinfo: {
-                _msg = QString("Removing \\r from ").append(SVN_PROP_MERGEINFO);
+                _msg = QStringLiteral("Removing \\r from ") + QLatin1String(SVN_PROP_MERGEINFO);
             }
             break;
             case svn_repos_notify_mutex_acquired: {

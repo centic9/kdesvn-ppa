@@ -24,13 +24,13 @@
 #include <qstring.h>
 
 class KCmdLineArgs;
-class KUrl;
 class pCPart;
 
 namespace svn
 {
 class Revision;
 }
+class QCommandLineParser;
 
 /**
 @author Rajko Albrecht
@@ -41,7 +41,7 @@ class CommandExec : public QObject
 public:
     explicit CommandExec(QObject *parent);
     virtual ~CommandExec();
-    virtual int exec(KCmdLineArgs *args);
+    virtual int exec(const QCommandLineParser *parser);
 
 protected slots:
     virtual void clientException(const QString &);
