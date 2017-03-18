@@ -1,3 +1,17 @@
+kdesvn (2.0.0-3) unstable; urgency=medium
+
+  [ Aurélien COUDERC ]
+  * Cherrypick upstream commit fixing broken startup from .desktop file.
+    (Closes: #858072)
+
+ -- Michael Biebl <biebl@debian.org>  Sat, 18 Mar 2017 01:15:09 +0100
+
+kdesvn (2.0.0-2) unstable; urgency=medium
+
+  * Drop Build-Depends on libssl-dev, no longer needed. (Closes: #855339)
+
+ -- Michael Biebl <biebl@debian.org>  Fri, 17 Feb 2017 00:00:05 +0100
+
 kdesvn (2.0.0-1) unstable; urgency=medium
 
   * New major upstream release based on Qt 5 and KDE Frameworks 5 (KF5).

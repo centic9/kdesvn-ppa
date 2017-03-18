@@ -23,7 +23,6 @@ Build-Depends: cmake (>= 2.8.12),
                libkf5texteditor-dev,
                libkf5wallet-dev,
                libkf5widgetsaddons-dev,
-               libssl-dev (>= 0.9.8a),
                libsvn-dev (>= 1.6.0),
                pkg-kde-tools (>= 0.9),
                qtbase5-dev
